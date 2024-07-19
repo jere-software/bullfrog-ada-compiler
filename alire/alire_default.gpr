@@ -1,0 +1,14 @@
+with "config/bullfrog_ada_compiler_config.gpr";
+
+aggregate project Alire_Default is
+
+   Build_Profile := Bullfrog_Ada_Compiler_config.Build_Profile;
+
+   for Project_Files use ("../default.gpr");
+
+   case Build_Profile is
+      when "release" => for External("BUILD") use "release";
+      when others    => for External("BUILD") use "development";
+   end case;
+
+end Alire_Default;
