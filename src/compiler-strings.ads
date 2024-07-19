@@ -15,8 +15,8 @@ with Ada.Strings.Fixed;
 
 -- Compiler string interface.  This package is meant to be
 -- an interface for the whole compiler.  So it can be 
--- replaced with a Wide_ or _Wide_Wide implementaiton or
--- another custom implementaiton
+-- replaced with a Wide_ or Wide_Wide_ implementation or
+-- another custom implementation
 package Compiler.Strings is
 
     -- Individual character type

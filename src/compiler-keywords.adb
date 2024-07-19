@@ -12,7 +12,7 @@ package body Compiler.Keywords is
     use type Strings.String;
     use type Tokens.Token_Kind;
 
-    -- Implementaiton for the search is a hashed map.
+    -- Implementation for the search is a hashed map.
     package Maps is new Ada.Containers.Indefinite_Hashed_Maps
         (Key_Type        => Strings.String, 
          Element_Type    => Tokens.Token_Kind,
