@@ -1,5 +1,5 @@
 -- Copyright (C) 2024
--- Jeremiah Breeden      
+-- Jeremiah Breeden
 --
 -- This Source Code Form is subject to the terms of the Mozilla Public
 -- License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -13,7 +13,6 @@ with Compiler.Strings;
 -- Program entry point
 procedure Main is
    Lexer : Compiler.Lexer.Instance;
-   use Compiler.Strings; 
    use Ada.Exceptions;
 begin
    Lexer.Run("input.txt");
@@ -27,9 +26,9 @@ begin
    Ada.Text_IO.Put_Line("---------------------------------");
 exception
    when E : Compiler.Lexer.Lexical_Error =>
-      Text_IO.Put("LEXICAL ERROR: ");
-      Text_IO.Put_Line(To_String(Exception_Message(E)));
+      Ada.Text_IO.Put("LEXICAL ERROR: ");
+      Ada.Text_IO.Put_Line(Exception_Message(E));
    when E : others => 
-      Text_IO.Put("Unexpected exception occurred: " & To_String(Exception_Name(E)));
+      Ada.Text_IO.Put("Unexpected exception occurred: " & Exception_Name(E));
       raise;
 end Main;
