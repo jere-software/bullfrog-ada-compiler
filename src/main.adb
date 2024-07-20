@@ -8,7 +8,6 @@
 with Ada.Text_IO;
 with Ada.Exceptions;
 with Compiler.Lexer;
-with Compiler.Strings;
 
 -- Program entry point
 procedure Main is
