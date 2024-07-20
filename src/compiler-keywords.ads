@@ -1,5 +1,5 @@
 -- Copyright (C) 2024
--- Jeremiah Breeden      
+-- Jeremiah Breeden     
 --
 -- This Source Code Form is subject to the terms of the Mozilla Public
 -- License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -12,8 +12,8 @@ with Compiler.Tokens;
 -- specific keyword or not.
 package Compiler.Keywords is
 
-    -- Searches keyword list and returns the appropriate token.  Returns
-    -- the token Identifier if the keyword is not found
-    function Token_Kind(Keyword : Strings.String) return Tokens.Token_Kind;
-    
+   -- Searches keyword list and returns the appropriate token.  Returns
+   -- the token Identifier if the keyword is not found
+   function Token_Kind(Keyword : Strings.String) return Tokens.Token_Kind;
+   
 end Compiler.Keywords;
