@@ -134,15 +134,17 @@ package body Compiler.Lexer is
       with Inline;
    begin
       Self.Last_In := Self.Next_In;
-      Self.Line   := Self.Next_Line;
+      Self.Line    := Self.Next_Line;
       Self.Column  := Self.Next_Column;
       Character'Read(Stream, Self.Next_In);
       
       --Self.Debug;
 
-      if Strings.Is_Newline(Self.Next_In) and then not Already_Found then
-         Self.Next_Line   := Self.Next_Line + 1;
-         Self.Next_Column := 1;
+      if Strings.Is_Newline(Self.Next_In) then
+         if not Already_Found then
+            Self.Next_Line   := Self.Next_Line + 1;
+            Self.Next_Column := 1;
+         end if;
       else
          Self.Next_Column := Self.Next_Column + 1;
       end if;

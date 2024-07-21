@@ -24,9 +24,7 @@ package Compiler.Strings is
 
    -- Type for a group of characters
    -- NOTE:  String must be a an array type of Characters
-   -- with Positive indexing or a custom type with both
-   -- indexing aspects defined with a function that takes
-   -- a positive index and returns a Character.
+   -- with Positive indexing.
    subtype String is Standard.String;
 
    -- Local type operations
@@ -122,6 +120,8 @@ package Compiler.Strings is
    
    -- Type conversion operations
    function To_String(Value : Standard.String) return String
+      is (Value) with Inline; -- Use Ada.Characters.Conversions for Wide_*
+   function To_Standard_String(Value : String) return Standard.String
       is (Value) with Inline; -- Use Ada.Characters.Conversions for Wide_*
    function Image(Value : Integer) return String is
       (if Value < 0 then 
