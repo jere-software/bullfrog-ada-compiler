@@ -93,7 +93,7 @@ package Compiler.Strings is
 
    -- Lexical separator types
    subtype Whitespace    is Character with Static_Predicate =>
-      Whitespace in Tab .. New_Line | Space;
+      Whitespace in Tab .. Carriage_Return | Space;
 
    -- Operator detection types
    subtype Operator_1_Character is Character with Static_Predicate =>
