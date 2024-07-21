@@ -1,4 +1,6 @@
-# 1. Bullfrog Ada Compiler
+# <p style="text-align: center;">Bullfrog Ada Compiler</p>
+
+# 1. Introduction
 This project is just for playing around with compiler related projects and the Ada language.  It is not intended to be a fleshed out project for general use.  It is for educational purposes only.
 
 It currently contains a basic Lexer for converting Ada files into tokens.

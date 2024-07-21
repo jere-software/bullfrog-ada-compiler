@@ -1,7 +1,7 @@
-# <p style="text-align: center;">Project Name Goes here</p>
+# <p style="text-align: center;">Bullfrog Ada Compiler Tests</p>
 
 # 1. Description
-
+These are tests designed to validate funcitonality of the more complted parts of the code.
 
 # 2. Building
 This project can be build using gnatmake, gprbuild, and [Alire](https://alire.ada.dev/).  Other build options may be possible but have not been tested.
@@ -28,7 +28,10 @@ In the top level directory simply execute the `alr build` command (no additional
 <u>NOTE 2:</u>  If you do not wish to use Alire at all, you can safely delete the `alire.toml` file and the `alire` subdirectory (and its contents).
 
 ## 2.4. Dependencies
-This project has no external dependencies.
+This project depends on a few system tools:
+* `rm` - Command used to delete files.  No switches are used
+* `int system(const char *)` - C function found in the system library.  Should not print to stdout (stderr is ok).
+* `diff` - Command used to calculate file differences.  It should support the switches `-iw` to ignore capitalization and whitespace (other than the newline character).
 
 # 3. License
 This project is licensed under the Mozilla Public License (version 2.0).  A local copy of the license is available in this repository.  It can also be found at https://mozilla.org/MPL/2.0/
