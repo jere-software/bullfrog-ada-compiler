@@ -127,15 +127,36 @@ is
                      Self.Expected("Range cannot be in numeric literal.  Digit");
                   end if;
                   Range_Found := True;
-                  return Result(1..Natural(Index)-1);  -- Trim of the previous period later
+
+                  -- Trim of the previous period later
+                  return Result(1..Natural(Index)-1);  
+
+               -- Period after a #, so assume literal is finished
+               elsif Self.Last_In = Pound then
+                  -- Make sure we are not in the middle of parsing
+                  -- the significand for a based literal.
+                  if Pound_Count = 1 then
+                     Self.Expected("Range cannot be in numeric literal.  Digit");
+                  end if;
+                  return Result(1..Natural(Index)-1);
                end if;
 
                -- Just a single period, move on to other parsing
                Check_Preceded_By_Digit;
-               if Exponent_Found or else Pound_Count > 1 then
-                  Self.Expected("Period cannot be in exponent field.  Digit");
+
+               -- If exponent is already found, assume literal is finished
+               if Exponent_Found then
+                  if Self.Last_In in Exponent_Lower | Exponent_Upper then
+                     Self.Expected("Period cannot be in exponent.  Digit");
+                  else
+                     return Result(1..Natural(Index)-1);
+                  end if;
                elsif Decimal_Found then
-                  Self.Expected("Too many periods.  Digit");
+                  if Pound_Count = 1 then
+                     Self.Expected("Too many periods.  Digit");
+                  else
+                     return Result(1..Natural(Index)-1);
+                  end if;
                end if;
                Decimal_Found := True;
             when Plus =>
