@@ -29,13 +29,6 @@ package body Test_2 is
       return Value;
    end Unescape_String;
 
-   procedure Remove_File(Filename : String) is
-   begin
-      if Exists(Filename) then
-         System("rm " & Filename);
-      end if;
-   end Remove_File;
-
    procedure Tokenize_File(Lexer : in out Test_2.Lexer; Filename : String) is 
       Line  : Positive := 1;
       First : Positive := 1;
@@ -53,12 +46,17 @@ package body Test_2 is
          return;
       end if;
 
-      Remove_File(Output_Filename);
-
-      Create 
-         (File => File,
-          Name => Output_Filename,
-          Mode => Out_File);
+      if Exists(Output_Filename) then
+         Open 
+            (File => File,
+             Name => Output_Filename,
+             Mode => Out_File);
+      else
+         Create 
+            (File => File,
+             Name => Output_Filename,
+             Mode => Out_File);
+      end if;
 
       
       for Token of Lexer.All_Tokens.all loop

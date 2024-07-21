@@ -29,7 +29,6 @@ In the top level directory simply execute the `alr build` command (no additional
 
 ## 2.4. Dependencies
 This project depends on a few system tools:
-* `rm` - Command used to delete files.  No switches are used
 * `int system(const char *)` - C function found in the system library.  Should not print to stdout (stderr is ok).
 * `diff` - Command used to calculate file differences.  It should support the switches `-iw` to ignore capitalization and whitespace (other than the newline character).
 
