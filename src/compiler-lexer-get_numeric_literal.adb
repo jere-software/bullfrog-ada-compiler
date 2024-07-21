@@ -22,6 +22,7 @@ is
    -- Parsing state
    Decimal_Found  : Boolean   := False;
    Exponent_Found : Boolean   := False;
+   Range_Found    : Boolean   := False;
 
    -- Base calculation variables.  Type is intentionally
    -- not constrained to 2..16 in order to facilitate 
@@ -118,6 +119,18 @@ is
                end if;
                Pound_Count := Pound_Count + 1;
             when Period =>
+               -- Two periods in a row means a range was found
+               if Self.Last_In = Period then
+                  -- Make sure we are not in the middle of parsing
+                  -- the significand for a based literal.
+                  if Pound_Count = 1 then
+                     Self.Expected("Range cannot be in numeric literal.  Digit");
+                  end if;
+                  Range_Found := True;
+                  return Result(1..Natural(Index)-1);  -- Trim of the previous period later
+               end if;
+
+               -- Just a single period, move on to other parsing
                Check_Preceded_By_Digit;
                if Exponent_Found or else Pound_Count > 1 then
                   Self.Expected("Period cannot be in exponent field.  Digit");
@@ -167,7 +180,26 @@ is
    Result : constant String := Get_Numeric;
 
 begin
-   Self.Tokens.Append(Token'
+   if Range_Found then
+      Self.Tokens.Append(Token'
+         (Kind  => 
+            (if Decimal_Found then 
+               Tokens.Real_Literal 
+            else 
+               Tokens.Integer_Literal),
+          Value => Strings.New_String(Result(Result'First .. Result'Last - 1)),
+          Line  => Line,
+          First => First,
+          Last  => Self.Column - 2));
+      Self.Tokens.Append(Token'
+         (Kind  => Tokens.Operator_Range,
+          Value => Strings.New_String(".."),
+          Line  => Line,
+          First => Self.Column - 1,
+          Last  => Self.Column));
+      Self.Get_Character(Stream);  -- Munch 2nd period
+   else
+      Self.Tokens.Append(Token'
       (Kind  => 
          (if Decimal_Found then 
             Tokens.Real_Literal 
@@ -177,4 +209,6 @@ begin
        Line  => Line,
        First => First,
        Last  => Self.Column - 1));
+   end if;
+   
 end Get_Numeric_Literal;
