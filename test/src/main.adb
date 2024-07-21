@@ -1,18 +1,16 @@
--- Copyright (C) 2024
--- Jeremiah Breeden
---
--- This Source Code Form is subject to the terms of the Mozilla Public
--- License, v. 2.0. If a copy of the MPL was not distributed with this
--- file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
 with Ada.Text_IO;
 with Test_1;
+with Test_2;
 
 -- Program entry point
 procedure Main is
    Lexer : Test_1.Lexer;
 begin
-   Ada.Text_IO.Put_Line("Hello World");
-   Test_1.Tokenize_Directory(Lexer, "./src");
-   Test_1.Tokenize_Directory(Lexer, "../src");
+   Ada.Text_IO.Put_Line("---------------Starting Tests---------------");
+   --Test_1.Tokenize_Directory(Lexer, "./src");
+   --Test_1.Tokenize_Directory(Lexer, "../src");
+
+   -- Test 2 runs Test 1 implicitly
+   Test_2.Tokenize_Directory(Lexer, "./src");
+   Test_2.Tokenize_Directory(Lexer, "../src");
 end Main;
