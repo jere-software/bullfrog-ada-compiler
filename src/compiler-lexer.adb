@@ -114,11 +114,14 @@ package body Compiler.Lexer is
 
    procedure Initialize(Self : in out Instance) is
    begin
-      Self.Tokens  := Empty_Token_List;
-      Self.Next_In := Strings.Space;
-      Self.Line   := 1;
-      Self.Column  := 1;
-      Self.State   := Running;
+      Self.Tokens      := Empty_Token_List;
+      Self.Next_In     := Strings.Space;
+      Self.Last_In     := Strings.Space;
+      Self.Line        := 1;
+      Self.Column      := 1;
+      Self.Next_Line   := 1;
+      Self.Next_Column := 1;
+      Self.State       := Running;
    end Initialize;
 
    procedure Get_Character
