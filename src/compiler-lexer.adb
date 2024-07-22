@@ -192,7 +192,13 @@ package body Compiler.Lexer is
       use type Ada.Containers.Count_Type;
       function Is_Literal return Boolean is
          (        Self.Tokens.Length = 0 
-          or else Self.Token_Kind not in Identifier | Keyword_All);
+          or else Self.Token_Kind not in 
+              Identifier 
+            | Keyword_All 
+            | Operator_Close_Parenthesis);
+      function EOF_Not_Registered return Boolean is
+         (        Self.Tokens.Length = 0 
+          or else Self.Token_Kind /= End_Of_File);
    begin
       Self.Skip_Whitespace(Stream);
       if Is_Alpha(Self.Next_In) then
@@ -214,6 +220,13 @@ package body Compiler.Lexer is
          end if;
       elsif Self.State /= Idle then
          Self.Expected("A valid token");
+      elsif EOF_Not_Registered then
+         Self.Add_Token
+            (Kind  => End_Of_File,
+             Value => "",
+             Line  => Self.Line,
+             First => Self.Column,
+             Last  => Self.Column);
       end if;
 
    end Get_Token;

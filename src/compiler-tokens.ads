@@ -13,7 +13,8 @@ package Compiler.Tokens with Pure is
 
    -- Top level token identifier
    type Token_Kind is
-      (Identifier,
+      (End_Of_File,
+       Identifier,
        Keyword_Begin,
        Keyword_Do,
        Keyword_Goto,
