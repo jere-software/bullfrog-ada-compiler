@@ -10,6 +10,7 @@ This project can be build using gnatmake, gprbuild, and [Alire](https://alire.ad
 
 <u><b>Build Platforms</b></u><br>
 GNAT v14.1.3 on msys2 (Win11)
+GNAT v13.2.0 on msys2 (Win11)
 
 ## 2.1. Building with gnatmake
 In the top level directory execute the following command:<br>
