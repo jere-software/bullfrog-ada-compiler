@@ -3,6 +3,17 @@
 # 1. Description
 These are tests designed to validate funcitonality of the more complted parts of the code.
 
+<u><b>Command Line Options</u></b>
+* directory_name - Optional parameter to specify what directory to parse ada files from.  If this is ommited, it defaults to parsing this projects own source files (both main and test).
+
+## 1.1. Running directly
+In the top level directory execute the following command:<br>
+`./bin/main [directory_name]`
+
+## 1.2. Running via [Alire](https://alire.ada.dev/)
+In the top level directory execute the following command:<br>
+`alr run [-a directory_name]`
+
 # 2. Building
 This project can be build using gnatmake, gprbuild, and [Alire](https://alire.ada.dev/).  Other build options may be possible but have not been tested.
 
