@@ -24,9 +24,9 @@ package Compiler.Lexer is
       (Kind  : Tokens.Token_Kind := Tokens.Comment) 
    is record
       Value  : Strings.Holder := Strings.Empty_Holder;
-      Line   : Positive      := 1;
-      First  : Positive      := 1;
-      Last   : Positive      := 1;
+      Line   : Positive       := 1;
+      First  : Positive       := 1;
+      Last   : Positive       := 1;
    end record;
 
    -- Prints the information for the supplied token to STDOUT
@@ -143,7 +143,7 @@ private
          Pre => Self.Tokens.Length not in 0;
 
    -- Top level scanning operations that generate tokens
-   procedure Get_Comment
+   procedure Get_Comment -- Usually called after Get_Operator
       (Self   : in out Instance; 
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
       with Pre => Self.Token_Kind in Tokens.Comment;
@@ -151,11 +151,11 @@ private
       (Self   : in out Instance; 
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
       with Pre => Strings.Is_Alpha(Self.Next_In);
-   procedure Get_Operator
+   procedure Get_Operator -- Can return Comment tokens
       (Self   : in out Instance; 
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
       with Pre => Strings.Is_Operator(Self.Next_In);
-   procedure Get_Numeric_Literal
+   procedure Get_Numeric_Literal -- Can return Operator_Range tokens
       (Self   : in out Instance; 
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
       with Pre => Strings.Is_Digit(Self.Next_In);
