@@ -16,28 +16,52 @@ package body Test_1 is
       Put_Line("FAIL - " & Message);
    end Fail;
 
-   procedure Tokenize_File(Lexer : in out Test_1.Lexer; Filename : String) is 
+   function Tokenize_File(Lexer : in out Test_1.Lexer; Filename : String) return Boolean is 
    begin
       Put("Tokenizing File: " & Filename & " => ");
       if not Exists(Filename) or else Kind(Filename) /= Ordinary_File then
          Fail("Invalid filename");
-      elsif  Filename(Filename'Last - 3 .. Filename'Last) /= ".ads"
-         and Filename(Filename'Last - 3 .. Filename'Last) /= ".adb"
-      then
-         Fail("Invalid file type");
+         return False;
       end if;
       Lexer.Run(Filename);
       Pass;
+      return True;
    exception
-      when E : Compiler.Lexer.Lexical_Error => Fail("Lexical error not expected - " & Exception_Message(E));
-      when E : others => Fail("Unexpected exception - " & Exception_Name(E) & " - " & Exception_Message(E));
+      when E : Compiler.Lexer.Lexical_Error => 
+         Fail("Lexical error not expected - " & Exception_Message(E));
+         return False;
+      when E : others => 
+         Fail("Unexpected exception - " & Exception_Name(E) & " - " & Exception_Message(E));
+         return False;
+   end Tokenize_File;
+
+   procedure Tokenize_File(Lexer : in out Test_1.Lexer; Filename : String) is
+      Result : constant Boolean := Tokenize_File(Lexer, Filename);
+      pragma Unreferenced(Result);
+   begin
+      null;
    end Tokenize_File;
 
    procedure Tokenize_Directory(Lexer : in out Test_1.Lexer; Directory_Name : String) is
+
+      Test_Failure : exception;
+
       procedure Tokenize_File(File : Directory_Entry_Type) is
+         Filename : constant String := Full_Name(File);
       begin
-         Tokenize_File(Lexer, Full_Name(File));
+         if Kind(Filename) /= Ordinary_File 
+            or else (         Filename(Filename'Last - 3 .. Filename'Last) /= ".ads"
+                     and then Filename(Filename'Last - 3 .. Filename'Last) /= ".adb")
+         then 
+            Put_Line("Skipping " & Filename);
+            return; -- Skip if not what we are looking for or done
+         end if;
+
+         if not Tokenize_File(Lexer, Filename) then
+            raise Test_Failure;
+         end if;
       end Tokenize_File;
+      
    begin
 
       Put("Tokenizing Directory: " & Directory_Name & " => ");
@@ -48,6 +72,8 @@ package body Test_1 is
 
       Search(Directory_Name, "", (Ordinary_File => True, others => False), Tokenize_File'Access);
 
+   exception
+      when Test_Failure => null; -- Just end if a test failed
    end Tokenize_Directory;
 
 end Test_1;
