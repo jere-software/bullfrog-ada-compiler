@@ -192,7 +192,7 @@ package body Compiler.Lexer is
       use type Ada.Containers.Count_Type;
       function Is_Literal return Boolean is
          (        Self.Tokens.Length = 0 
-          or else Self.Token_Kind /= Identifier);
+          or else Self.Token_Kind not in Identifier | Keyword_All);
    begin
       Self.Skip_Whitespace(Stream);
       if Is_Alpha(Self.Next_In) then
