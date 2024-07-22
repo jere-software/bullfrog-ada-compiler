@@ -203,13 +203,13 @@ package body Compiler.Lexer is
       Self.Skip_Whitespace(Stream);
       if Is_Alpha(Self.Next_In) then
          Self.Get_Name(Stream);
-      elsif Is_Digit(Self.Next_In) then
+      elsif Is_Digit(Self.Next_In) then -- may find range operator
          Self.Get_Numeric_Literal(Stream);
       elsif Self.Next_In = Quote then
          Self.Get_String_Literal(Stream);
       elsif Self.Next_in = Apostrophe and then Is_Literal then
          Self.Get_Character_Literal(Stream);
-      elsif Is_Operator(Self.Next_In) then
+      elsif Is_Operator(Self.Next_In) then -- may find comment
          Self.Get_Operator(Stream);
 
          -- if the operator ended up being a comment
