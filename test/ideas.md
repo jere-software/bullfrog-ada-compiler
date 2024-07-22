@@ -8,3 +8,6 @@ Run this against known good source files and ensure no lexical errors are detect
    * add in line breaks and spaces as indicated by token locations
 2. Use `diff` command ignoring case and whitespace to compare results and ensure they match
 3. Make it work with a location specified by command line
+   * Tested against gnoga
+   * Tested against simple_components
+   * Tested against mathpaqs

@@ -113,12 +113,23 @@ package body Test_2 is
       null;
    end Tokenize_File;
 
-   procedure Tokenize_Directory(Lexer : in out Test_2.Lexer; Directory_Name : String) is 
-      Test_Failure : exception;
+   Test_Failure : exception;
 
+   procedure Tokenize_Folder(Lexer : in out Test_2.Lexer; Directory_Name : String) is 
+      
       procedure Tokenize_File(File : Directory_Entry_Type) is
          Filename : constant String := Full_Name(File);
       begin
+
+         if Kind(Filename) = Directory then
+            if          Simple_Name(File) /= "."
+               and then Simple_Name(File) /= ".."
+            then
+               Tokenize_Folder(Lexer, Filename);
+            end if;
+            return;
+         end if;
+
          if Kind(Filename) /= Ordinary_File 
             or else (         Filename(Filename'Last - 3 .. Filename'Last) /= ".ads"
                      and then Filename(Filename'Last - 3 .. Filename'Last) /= ".adb")
@@ -140,10 +151,16 @@ package body Test_2 is
       end if;
       New_Line;
 
-      Search(Directory_Name, "", (Ordinary_File => True, others => False), Tokenize_File'Access);
+      Search(Directory_Name, "", (Directory | Ordinary_File => True, others => False), Tokenize_File'Access);
 
+   end Tokenize_Folder;
+
+   procedure Tokenize_Directory(Lexer : in out Test_2.Lexer; Directory_Name : String) is
+   begin
+      Tokenize_Folder(Lexer, Directory_Name);
    exception
-      when Test_Failure => null; -- Just end if a test failed
+      when Test_Failure => 
+         null;
    end Tokenize_Directory;
 
    procedure Tokenize_Directory is
