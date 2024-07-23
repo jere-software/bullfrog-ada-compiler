@@ -11,3 +11,6 @@ Run this against known good source files and ensure no lexical errors are detect
    * Tested against gnoga
    * Tested against simple_components
    * Tested against mathpaqs
+
+# Test 3
+Create an object stream buffer, load user supplied strings into it, and pass those to the lexer to test out various edge cases.  May need to initialize the lexer for each pass to be safe.
