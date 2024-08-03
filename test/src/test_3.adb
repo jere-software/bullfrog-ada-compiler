@@ -61,22 +61,30 @@ package body Test_3 is
          Put_Line("   main [-p string]");
          Put_Line("   main [-f string]");
       end Help;
+
+      function Concatenate_Arguments(Start : Positive) return String is
+      begin
+         if Start = Argument_Count then
+            return Argument(Start);
+         else
+            return Argument(Start) & " " & Concatenate_Arguments(Start+1);
+         end if;
+      end Concatenate_Arguments;
+
    begin
       case Argument_Count is
          when 0 =>
             null;
          when 1 =>
             Test_2.Tokenize_Directory(Lexer, Argument(1));
-         when 2 =>
+         when others =>
             if Argument(1) = "-p" then
-               Tokenize_String(Lexer, Argument(2), True);
+               Tokenize_String(Lexer, Concatenate_Arguments(2), True);
             elsif Argument(1) = "-f" then
-               Tokenize_String(Lexer, Argument(2), False);
+               Tokenize_String(Lexer, Concatenate_Arguments(2), False);
             else  
                Help;
             end if;
-         when others =>
-            Help;
       end case;
    end Tokenize_String;
 

@@ -15,5 +15,6 @@ begin
    --Test_2.Tokenize_Directory(Lexer, "./src");
    --Test_2.Tokenize_Directory(Lexer, "../src");
    --Test_2.Tokenize_Directory;
-   Test_3.Tokenize_String(Lexer, "' Hello World", False);
+   --Test_3.Tokenize_String(Lexer, "' Hello World", False);
+   Test_3.Tokenize_String(Lexer);
 end Main;

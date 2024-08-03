@@ -4,15 +4,26 @@
 These are tests designed to validate funcitonality of the more complted parts of the code.
 
 <u><b>Command Line Options</u></b>
-* directory_name - Optional parameter to specify what directory to parse ada files from.  If this is ommited, it defaults to parsing this projects own source files (both main and test).
+* If no arguments are specified, the program will run a predefined test.
+* `directory_name` - Optional parameter to specify what directory to parse ada files from.
+* `-p string` - Optional parameter specifying a string that is expected to pass lexical scanning.
+* `-f string` - Optional parameter specifying a string that is expected to fail lexical scanning.
 
 ## 1.1. Running directly
 In the top level directory execute the following command:<br>
-`./bin/main [directory_name]`
+`./bin/main [directory_name]`<br>
+`./bin/main [-p string]`<br>
+`./bin/main [-f string]`
+
+<u>NOTE:</u> String values must properly escape strings and apostrophes using your shell's rules for command line arguments.
 
 ## 1.2. Running via [Alire](https://alire.ada.dev/)
 In the top level directory execute the following command:<br>
-`alr run [-a directory_name]`
+`alr run [-a directory_name]`<br>
+`alr run [-a "-p string"]`<br>
+`alr rum [-a "-f string"]`
+
+<u>NOTE:</u> Since Alire requires quotes around all arguments after `-a`, it is not recommended to pass any arguments containing strings or character literals.  Run directly for better more versitile input options.
 
 # 2. Building
 This project can be build using gnatmake, gprbuild, and [Alire](https://alire.ada.dev/).  Other build options may be possible but have not been tested.
