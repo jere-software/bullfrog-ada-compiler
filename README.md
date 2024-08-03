@@ -7,11 +7,11 @@ It currently contains a basic Lexer for converting Ada files into tokens.
 
 ## 1.1. Running directly
 In the top level directory execute the following command:<br>
-`./bin/bfgada`
+`./bin/bfgada [filename]`
 
 ## 1.2. Running via [Alire](https://alire.ada.dev/)
 In the top level directory execute the following command:<br>
-`alr run`
+`alr run [-a filename]`
 
 # 2. Building
 This project can be build using gnatmake, gprbuild, and [Alire](https://alire.ada.dev/).  Other build options may be possible but have not been tested.
