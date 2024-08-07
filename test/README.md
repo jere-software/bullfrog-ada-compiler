@@ -12,7 +12,7 @@ These are tests designed to validate funcitonality of the more complted parts of
 
 ## 1.1. Running directly
 In the top level directory execute the following command:<br>
-`./bin/main [filename_name]`<br>
+`./bin/main [file_name]`<br>
 `./bin/main [directory_name]`<br>
 `./bin/main [-p string]`<br>
 `./bin/main [-f string]`
@@ -21,7 +21,7 @@ In the top level directory execute the following command:<br>
 
 ## 1.2. Running via [Alire](https://alire.ada.dev/)
 In the top level directory execute the following command:<br>
-`alr run [-a filename_name]`<br>
+`alr run [-a file_name]`<br>
 `alr run [-a directory_name]`<br>
 `alr run [-a "-p string"]`<br>
 `alr rum [-a "-f string"]`
