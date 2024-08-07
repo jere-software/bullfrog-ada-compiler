@@ -5,12 +5,14 @@ These are tests designed to validate funcitonality of the more complted parts of
 
 <u><b>Command Line Options</u></b>
 * If no arguments are specified, the program will run a predefined test.
+* `file_name` - Optional parameter to specify what file to parse from.
 * `directory_name` - Optional parameter to specify what directory to parse ada files from.
 * `-p string` - Optional parameter specifying a string that is expected to pass lexical scanning.
 * `-f string` - Optional parameter specifying a string that is expected to fail lexical scanning.
 
 ## 1.1. Running directly
 In the top level directory execute the following command:<br>
+`./bin/main [filename_name]`<br>
 `./bin/main [directory_name]`<br>
 `./bin/main [-p string]`<br>
 `./bin/main [-f string]`
@@ -19,6 +21,7 @@ In the top level directory execute the following command:<br>
 
 ## 1.2. Running via [Alire](https://alire.ada.dev/)
 In the top level directory execute the following command:<br>
+`alr run [-a filename_name]`<br>
 `alr run [-a directory_name]`<br>
 `alr run [-a "-p string"]`<br>
 `alr rum [-a "-f string"]`
