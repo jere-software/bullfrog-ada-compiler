@@ -194,15 +194,17 @@ package body Compiler.Lexer is
          (        Self.Tokens.Length = 0 
           or else Self.Token_Kind not in 
               Identifier 
+            | Attribute
             | Keyword_All 
-            | Operator_Close_Parenthesis);
+            | Operator_Close_Parenthesis
+            | Operator_Close_Bracket);
       function EOF_Not_Registered return Boolean is
          (        Self.Tokens.Length = 0 
           or else Self.Token_Kind /= End_Of_File);
    begin
       Self.Skip_Whitespace(Stream);
       if Is_Alpha(Self.Next_In) then
-         Self.Get_Name(Stream);
+         Self.Get_Identifier(Stream);
       elsif Is_Digit(Self.Next_In) then -- may find range operator
          Self.Get_Numeric_Literal(Stream);
       elsif Self.Next_In = Quote then
@@ -255,7 +257,7 @@ package body Compiler.Lexer is
       Self.Set_Token_Last(Self.Column-1);
    end Get_Comment;
 
-   procedure Get_Name
+   procedure Get_Identifier
       (Self   : in out Instance; 
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
    is
@@ -266,7 +268,7 @@ package body Compiler.Lexer is
       First : constant Positive := Self.Column;
       Last  :          Positive := Self.Column;
 
-      function Get_Name return String is
+      function Get_Identifier return String is
          Temp : String(1..Default_String_Length);
       begin
          for Index in Temp'Range loop
@@ -286,19 +288,29 @@ package body Compiler.Lexer is
                return Temp(1..Index-1);
             end if;
          end loop;
-         return Temp & Get_Name;
-      end Get_Name;
+         return Temp & Get_Identifier;
+      end Get_Identifier;
 
-      Result : constant String := Get_Name;
+      Result : constant String := Get_Identifier;
+
+      use type Tokens.Token_Kind;
+      
+      function Follows_Apostrophe return Boolean is
+         (Self.Tokens.Length not in 0 
+          and then Self.Token_Kind = Tokens.Operator_Apostrophe)
+      with Inline;
 
    begin
       Self.Tokens.Append(Token'
-         (Kind  => Keywords.Token_Kind(Result),
+         (Kind  => (if Follows_Apostrophe then
+                       Tokens.Attribute
+                    else
+                       Keywords.Token_Kind(Result)),
           Value => Strings.New_String(Result),
           Line  => Line,
           First => First,
           Last  => Last));
-   end Get_Name;
+   end Get_Identifier;
 
    procedure Get_Operator
       (Self   : in out Instance; 

@@ -8,6 +8,7 @@
 with Ada.Text_IO;
 with Ada.Exceptions;
 with Compiler.Lexer;
+with Compiler.Parser;
 with Ada.Command_Line;
 with Ada.IO_Exceptions;
 
