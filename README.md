@@ -91,3 +91,15 @@ Warranty and Liablity sections for this project (pulled from the license documen
 *  limitation may not apply to You.                                    *
 *                                                                      *
 ************************************************************************
+```
+
+# 5. Design Philosophy
+## 5.1 Lexer
+The lexer goes a step or two further than a tradional lexer.  This is due to the underlying type of lexing it does.  It implements a 2 character buffer of the next character and the previous character.  This makes identifying the difference between a character literal and an attribute difficult to determing.  In order to get around this, the lexer needs to make some assumptions:
+
+1. If an apostrophy comes after an identifier, an attribute, the `all` keyword, a closing bracket (Ada 2022) or a closing parenthesis, then it must be an attribute rather than a character literal.
+2. Likewise, if an identifier comes after an apostrophe, then it must be an attribute.
+
+This means that the lexer will distinguish between an indentifier and and attribute, but not an aspect or pragma.  The lexer doesn't go as far as to validate if it is a valid attribute or not, and leaves that for the parser.
+
+For any identifier that is not an attribute, the lexer tries to see if it is a keyword or not.  This is to also handle the scenario for the keyword `range` vs the attribute `'Range` as a character literal can happen after the former but not the latter.  If later on there are any aspects or pragmas that are allowed to be keywords, then the parser can be updated to check those keywords specifically when it does the matching (See the Aspect_Identifier and Pragma_Identifier procedures).

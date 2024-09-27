@@ -15,6 +15,7 @@ package Compiler.Tokens with Pure is
    type Token_Kind is
       (End_Of_File,
        Identifier,
+       Attribute,  -- Subcategory of Identifier
        Keyword_Begin,
        Keyword_Do,
        Keyword_Goto,
