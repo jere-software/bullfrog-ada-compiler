@@ -13,6 +13,8 @@ package Compiler.Aspects is
    -- invalid case
    type Aspect_Identifier is 
       (Invalid,
+
+       -- Aspects that standalone without attributes
        Aspect_Address,
        Aspect_Aggregate,
        Aspect_Alignment,
@@ -43,14 +45,12 @@ package Compiler.Aspects is
        Aspect_External_Tag,
        Aspect_Full_Access_Only,
        Aspect_Global,
-       Aspect_Global_Class,
        Aspect_Implicit_Dereference,
        Aspect_Import,
        Aspect_Independent,
        Aspect_Independent_Components,
        Aspect_Inline,
        Aspect_Input,
-       Aspect_Input_Class,
        Aspect_Integer_Literal,
        Aspect_Interrupt_Handler,
        Aspect_Interrupt_Priority,
@@ -64,19 +64,15 @@ package Compiler.Aspects is
        Aspect_No_Return,
        Aspect_Nonblocking,
        Aspect_Output,
-       Aspect_Output_Class,
        Aspect_Pack,
        Aspect_Parallel_Calls,
        Aspect_Post,
-       Aspect_Post_Class,
        Aspect_Pre,
-       Aspect_Pre_Class,
        Aspect_Predicate_Failure,
        Aspect_Preelaborate,
        Aspect_Priority,
        Aspect_Put_Image,
        Aspect_Read,
-       Aspect_Read_Class,
        Aspect_Real_Literal,
        Aspect_Relative_Deadline,
        Aspect_Remote_Call_Interface,
@@ -85,7 +81,6 @@ package Compiler.Aspects is
        Aspect_Size,
        Aspect_Small,
        Aspect_Stable_Properties,
-       Aspect_Stable_Properties_Class,
        Aspect_Static,
        Aspect_Static_Predicate,
        Aspect_Storage_Pool,
@@ -94,44 +89,58 @@ package Compiler.Aspects is
        Aspect_String_Literal,
        Aspect_Synchronization,
        Aspect_Type_Invariant,
-       Aspect_Type_Invariant_Class,
        Aspect_Unchecked_Union,
        Aspect_Use_Formal,
        Aspect_Variable_Indexing,
        Aspect_Volatile,
        Aspect_Volatile_Components,
        Aspect_Write,
-       Aspect_Write_Class,
-       Aspect_Yield);
+       Aspect_Yield,
+
+       -- Aspects with attributes (appended at end)
+       Aspect_Global_Class,
+       Aspect_Input_Class,
+       Aspect_Output_Class,
+       Aspect_Post_Class,
+       Aspect_Pre_Class,
+       Aspect_Read_Class,
+       Aspect_Stable_Properties_Class,
+       Aspect_Type_Invariant_Class,
+       Aspect_Write_Class);
 
    -- All valid aspects, language defined and implementation defined
-   subtype Valid_Aspect is Aspect_Identifier 
+   subtype Valid_Aspect is Aspect_Identifier
+      range Aspect_Address .. Aspect_Write_Class;
+
+   -- All valid aspects without attributes, language defined and implementation defined
+   subtype Valid_Simple_Aspect is Aspect_Identifier 
       range Aspect_Address .. Aspect_Yield;
 
-   -- Only language defined aspects
+   -- All valid aspects with attributes, language defined and implementation defined
+   subtype Valid_Complex_Aspect is Aspect_Identifier
+      range Aspect_Global_Class .. Aspect_Write_Class;
+
+   -- Only language defined aspects without attributes
+   subtype Language_Defined_Simple_Aspect is Aspect_Identifier
+      range Aspect_Address .. Aspect_Yield;
+
+   -- All valid aspects with attributes, language defined and implementation defined
+   subtype Language_Defined_Complex_Aspect is Aspect_Identifier
+      range Aspect_Global_Class .. Aspect_Write_Class;
+
+   -- Only language defined aspects (with and without attributes)
    subtype Language_Defined_Aspect is Aspect_Identifier
-      range Aspect_Address .. Aspect_Yield;
-
-   -- Aspects that are class wide and require a 'Class attribute
-   -- in the specification
-   subtype Classwide_Aspect is Aspect_Identifier
-      with Static_Predicate => Classwide_Aspect in
-           Aspect_Global_Class
-         | Aspect_Input_Class
-         | Aspect_Output_Class
-         | Aspect_Post_Class
-         | Aspect_Pre_Class
-         | Aspect_Read_Class
-         | Aspect_Stable_Properties_Class
-         | Aspect_Type_Invariant_Class
-         | Aspect_Write_Class;
+      with Static_Predicate => Language_Defined_Aspect in 
+         Language_Defined_Simple_Aspect | Language_Defined_Complex_Aspect;
 
    -- Verifies the supplied string is a valid language defined aspect.
    -- If the input is valid, it returns the associated aspect enumeration
-   -- value or the value Invalid if not.
+   -- value or the value Invalid if not.  This only works for aspects
+   -- without a supporting attribute (I.E. no classwide aspects).
    function Aspect_ID(Name : Strings.String) return Aspect_Identifier;
 
    -- Used for aspects that contain attributes (EX: Read'Class => )
+   -- Validates that the supplied Attribute is valid
    function Aspect_ID
       (Name      : Strings.String;
        Attribute : Strings.String) 

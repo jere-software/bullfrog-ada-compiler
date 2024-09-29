@@ -6,6 +6,7 @@
 -- file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 with Compiler.Enumeration_Search;
+with Compiler.Attributes;
 
 package body Compiler.Aspects is
 
@@ -15,14 +16,42 @@ package body Compiler.Aspects is
        Invalid       => Invalid,
        Prefix_Length => 7);
 
-   function Aspect_ID(Name : Strings.String) return Aspect_Identifier
-      renames Mapper.Search;
+   function Aspect_ID(Name : Strings.String) return Aspect_Identifier is 
+      ID : constant Aspect_Identifier := Mapper.Search(Name);
+   begin
+      if ID in Valid_Simple_Aspect then
+         return ID;
+      else
+         return Invalid;
+      end if;
+   end Aspect_ID;
 
    function Aspect_ID
       (Name      : Strings.String;
        Attribute : Strings.String) 
        return Aspect_Identifier
-   is (Aspect_ID(Name & "_" & Attribute));
+   is 
+      use Attributes;
+   begin
+      -- Confirm the attribute is a valid one
+      declare
+         ID : constant Attribute_Identifier := Attribute_ID(Attribute);
+      begin
+         if ID = Invalid then
+            return Invalid;
+         end if;
+      end;
+
+      declare
+         ID : constant Aspect_Identifier := Aspect_ID(Name & "_" & Attribute);
+      begin
+         if ID in Valid_Complex_Aspect then
+            return ID;
+         else
+            return Invalid;
+         end if;
+      end;
+   end Aspect_ID;
 
    -- Default information value
    Not_Supported : constant Info := (Supported => False);
