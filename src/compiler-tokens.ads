@@ -16,6 +16,7 @@ package Compiler.Tokens with Pure is
       (End_Of_File,
        Identifier,
        Attribute,  -- Subcategory of Identifier
+       Pragma_ID,
        Keyword_Begin,
        Keyword_Do,
        Keyword_Goto,

@@ -10,6 +10,7 @@ with Ada.Text_IO.Text_Streams;
 with Ada.Characters.Latin_1;
 with Ada.Characters.Handling;
 with Ada.Containers.Indefinite_Holders;
+with Ada.Containers.Indefinite_Vectors;
 with Ada.Strings.Hash;
 with Ada.Strings.Fixed;
 
@@ -191,6 +192,18 @@ package Compiler.Strings is
    procedure Set(Self : in out Holder; Value : String)
       renames Replace_Element;
 
+   function "+"(Item : Holder) return String
+      renames Element;
+   function "+"(Item : String) return Holder
+      renames To_Holder;
+   function "&"(L : Holder; R : String) return String
+      is (L.Element & R);
+   function "&"(L : String; R : Holder) return String
+      is (L & R.Element);
+
    Empty_Holder : constant Holder := (Holders.Empty_Holder with null record);
+
+   package Vectors is new Ada.Containers.Indefinite_Vectors(Positive, String);
+   type Vector is new Vectors.Vector with null record;
 
 end Compiler.Strings;

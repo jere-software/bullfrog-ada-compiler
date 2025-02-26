@@ -160,7 +160,7 @@ package body Compiler.Parser is
       ID : Pragmas.Pragma_Identifier;
    begin
 
-      Self.Match(Tokens.Identifier);
+      Self.Match(Tokens.Pragma_ID);
 
       ID := Pragma_ID(Self.Token_Value);
 

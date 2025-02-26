@@ -18,3 +18,5 @@ abcdef'(ghijklm)
 test comment -- here
 
 hello - yes xor test ' := '''
+
+pragma Unreferenced

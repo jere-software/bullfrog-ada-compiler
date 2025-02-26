@@ -300,10 +300,17 @@ package body Compiler.Lexer is
           and then Self.Token_Kind = Tokens.Operator_Apostrophe)
       with Inline;
 
+      function Follows_Pragma return Boolean is
+         (Self.Tokens.Length not in 0 
+          and then Self.Token_Kind = Tokens.Keyword_Pragma)
+      with Inline;
+
    begin
       Self.Tokens.Append(Token'
          (Kind  => (if Follows_Apostrophe then
                        Tokens.Attribute
+                    elsif Follows_Pragma then
+                       Tokens.Pragma_ID
                     else
                        Keywords.Token_Kind(Result)),
           Value => Strings.New_String(Result),

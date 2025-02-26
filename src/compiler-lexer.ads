@@ -72,23 +72,6 @@ package Compiler.Lexer is
    function All_Tokens(Self : aliased Instance) 
       return not null access constant Token_List
    with Inline;
-   
-   -- Last token info
-   function Token_Kind(Self : Instance) return Tokens.Token_Kind
-      with Inline, 
-         Pre => Self.All_Tokens.Length not in 0;
-   function Token_Value(Self : Instance) return Strings.String
-      with Inline, 
-         Pre => Self.All_Tokens.Length not in 0;
-   function Token_Line(Self : Instance) return Positive
-      with Inline, 
-         Pre => Self.All_Tokens.Length not in 0;
-   function Token_First(Self : Instance) return Positive
-      with Inline, 
-         Pre => Self.All_Tokens.Length not in 0;
-   function Token_Last(Self : Instance) return Positive
-      with Inline, 
-         Pre => Self.All_Tokens.Length not in 0;
 
    -- Debug info on the last token found
    procedure Debug(Self : Instance);
@@ -123,6 +106,23 @@ private
       Next_Line   : Positive           := 1;
       Next_Column : Positive           := 1;
    end record;
+
+   -- Last token info
+   function Token_Kind(Self : Instance) return Tokens.Token_Kind
+      with Inline, 
+         Pre => Self.All_Tokens.Length not in 0;
+   function Token_Value(Self : Instance) return Strings.String
+      with Inline, 
+         Pre => Self.All_Tokens.Length not in 0;
+   function Token_Line(Self : Instance) return Positive
+      with Inline, 
+         Pre => Self.All_Tokens.Length not in 0;
+   function Token_First(Self : Instance) return Positive
+      with Inline, 
+         Pre => Self.All_Tokens.Length not in 0;
+   function Token_Last(Self : Instance) return Positive
+      with Inline, 
+         Pre => Self.All_Tokens.Length not in 0;
 
    -- Token insertion operations
    procedure Add_Token
