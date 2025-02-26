@@ -182,6 +182,7 @@ package body Compiler.Lexer is
    ------------------------------------------------------
    ----------- Lexer Tokenization Operations ------------
    ------------------------------------------------------
+   
    procedure Get_Token
       (Self   : in out Instance; 
        Stream : not null access Ada.Streams.Root_Stream_Type'Class) 

@@ -147,7 +147,7 @@ private
       (Self   : in out Instance; 
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
       with Pre => Self.Token_Kind in Tokens.Comment;
-   procedure Get_Identifier -- Can return Attribute tokens
+   procedure Get_Identifier -- Can return Attribute or Pragma_ID tokens
       (Self   : in out Instance; 
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
       with Pre => Strings.Is_Alpha(Self.Next_In);

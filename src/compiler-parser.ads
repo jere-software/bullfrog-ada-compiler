@@ -56,7 +56,7 @@ private
        Token :        Tokens.Token_Kind) 
        return Boolean;
 
-   -- Matches and validates an identifier.  Retunrs
+   -- Matches and validates an identifier.  Returns
    -- pertinent info if a valid match, or halts parsing
    -- if not.
    procedure Attribute_Identifier
