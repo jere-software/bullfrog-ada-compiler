@@ -166,7 +166,7 @@ package body Compiler.Lexer is
    is
       use Strings;
    begin
-      while Self.State /= Idle and Is_Space(Self.Next_In) loop
+      while Self.Is_Running and Is_Space(Self.Next_In) loop
          Self.Get_Character(Stream);
       end loop;
    end Skip_Whitespace;
@@ -199,9 +199,6 @@ package body Compiler.Lexer is
             | Keyword_All 
             | Operator_Close_Parenthesis
             | Operator_Close_Bracket);
-      function EOF_Not_Registered return Boolean is
-         (        Self.Tokens.Length = 0 
-          or else Self.Token_Kind /= End_Of_File);
    begin
       Self.Skip_Whitespace(Stream);
       if Is_Alpha(Self.Next_In) then
@@ -221,15 +218,8 @@ package body Compiler.Lexer is
          if Self.Token_Kind = Tokens.Comment then
             Self.Get_Comment(Stream);
          end if;
-      elsif Self.State /= Idle then
+      elsif Self.Is_Running then
          Self.Expected("A valid token");
-      elsif EOF_Not_Registered then
-         Self.Add_Token
-            (Kind  => End_Of_File,
-             Value => "",
-             Line  => Self.Line,
-             First => Self.Column,
-             Last  => Self.Column);
       end if;
 
    end Get_Token;
@@ -242,7 +232,7 @@ package body Compiler.Lexer is
          Result : String(1..Default_String_Length);
          Index : Positive := 1;
       begin
-         while not Strings.Is_Newline(Self.Next_In) and Self.State /= Idle loop
+         while Self.Is_Running and not Strings.Is_Newline(Self.Next_In)  loop
             Result(Index) := Self.Next_In;
             Self.Get_Character(Stream);
             if Index = Default_String_Length then
@@ -376,7 +366,7 @@ package body Compiler.Lexer is
       begin
 
          -- Loop while graphics characters are coming in
-         while Self.State /= Idle and Strings.Is_Graphic(Self.Next_In) loop
+         while Self.Is_Running and Strings.Is_Graphic(Self.Next_In) loop
 
             -- See if character is quote or not
             if Self.Next_In in Strings.Quote then

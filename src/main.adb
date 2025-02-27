@@ -29,7 +29,6 @@ procedure Main is
          Compiler.Lexer.Debug(Token);
       end loop;
       
-      Ada.Text_IO.New_Line(2);
    exception
       when E : Compiler.Lexer.Lexical_Error =>
          Ada.Text_IO.Put("LEXICAL ERROR: ");

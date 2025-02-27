@@ -68,6 +68,23 @@ package Compiler.Lexer is
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
       with Pre => Self.Is_Running;
 
+   -- Last token info
+   function Token_Kind(Self : Instance) return Tokens.Token_Kind
+      with Inline, 
+         Pre => Self.All_Tokens.Length not in 0;
+   function Token_Value(Self : Instance) return Strings.String
+      with Inline, 
+         Pre => Self.All_Tokens.Length not in 0;
+   function Token_Line(Self : Instance) return Positive
+      with Inline, 
+         Pre => Self.All_Tokens.Length not in 0;
+   function Token_First(Self : Instance) return Positive
+      with Inline, 
+         Pre => Self.All_Tokens.Length not in 0;
+   function Token_Last(Self : Instance) return Positive
+      with Inline, 
+         Pre => Self.All_Tokens.Length not in 0;
+
    -- Returns the current list of tokens found so far
    function All_Tokens(Self : aliased Instance) 
       return not null access constant Token_List
@@ -106,23 +123,6 @@ private
       Next_Line   : Positive           := 1;
       Next_Column : Positive           := 1;
    end record;
-
-   -- Last token info
-   function Token_Kind(Self : Instance) return Tokens.Token_Kind
-      with Inline, 
-         Pre => Self.All_Tokens.Length not in 0;
-   function Token_Value(Self : Instance) return Strings.String
-      with Inline, 
-         Pre => Self.All_Tokens.Length not in 0;
-   function Token_Line(Self : Instance) return Positive
-      with Inline, 
-         Pre => Self.All_Tokens.Length not in 0;
-   function Token_First(Self : Instance) return Positive
-      with Inline, 
-         Pre => Self.All_Tokens.Length not in 0;
-   function Token_Last(Self : Instance) return Positive
-      with Inline, 
-         Pre => Self.All_Tokens.Length not in 0;
 
    -- Token insertion operations
    procedure Add_Token
@@ -172,11 +172,11 @@ private
    procedure Get_Character
       (Self   : in out Instance; 
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
-      with Pre => Self.State /= Idle;
+      with Pre => Self.Is_Running;
    procedure Skip_Whitespace
       (Self   : in out Instance; 
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
-      with Pre => Self.State /= Idle;
+      with Pre => Self.Is_Running;
 
    -- Low level output operations
    procedure Halt(Self : Instance; Message : String);
