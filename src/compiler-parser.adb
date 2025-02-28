@@ -9,22 +9,51 @@ package body Compiler.Parser is
 
    -- Bring in operators for Token_Kind
    use type Tokens.Token_Kind;
+   use type Strings.Holder;
+   use type Strings.String;
 
    ------------------------------------------------------
    --------------- Core Parsing Operations --------------
    ------------------------------------------------------
 
+   -- Resets the parser to be in the running state
+   procedure Reset(Self : in out Instance) is
+   begin
+      Self.Next    := 1;
+      Self.Last    := 1;
+      Self.Running := True;
+   end Reset;
+
+   procedure Run(Self : in out Instance) is
+   begin 
+      null; -- TODO: main loop;
+   end Run;
+
    procedure Run(Self : in out Instance; Filename : Standard.String) is
    begin
+      Self.Reset;
       Self.Lexer.Run(Filename);
+      Self.Run;
    end Run;
 
    procedure Run
       (Self   : in out Instance; 
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
    is begin
-      Self.Lexer.Run(Stream);
+      Self.Initialize(Stream);
+      Self.Run;
    end Run;
+
+   procedure Initialize
+      (Self   : in out Instance;
+       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
+   is begin  
+      Reset(Self);
+      Self.Lexer.Run(Stream);
+   end Initialize;
+
+   function Is_Running(Self : Instance) return Boolean is
+      (Self.Running);
 
    ------------------------------------------------------
    ----------------- Utility Operations -----------------
@@ -49,8 +78,39 @@ package body Compiler.Parser is
       Self.Last := Self.Next;
       if Self.Next < Self.Lexer.All_Tokens.Last_Index then
          Self.Next := Self.Next + 1;
+      else
+         Self.Running := False;
       end if;
    end Scan;
+
+   function Token_Image(Token : Lexer.Token) return Strings.String is
+      (if Token.Kind in Tokens.Identifier 
+                      | Tokens.Attribute 
+                      | Tokens.Pragma_ID 
+       then 
+         Token.Kind'Image & " (" & Token.Value & ")" 
+       else
+         Token.Kind'Image);
+
+   function Current_Token_Image(Self  : Instance) return Strings.String is
+      (if not Self.Is_Running then
+         "End of File"
+       else
+         Token_Image(Self.Lexer.All_Tokens.all(Self.Next)));
+
+   function Token_Error_Image
+      (Self  : Instance;
+       Token : Tokens.Token_Kind)
+       return STrings.String 
+   is ("Expected " & Token'Image & " but found " & Current_Token_Image(Self));
+
+   function Identifier_Error_Image
+      (Self       : Instance;
+       Identifier : Strings.String)
+       return Strings.String
+   is ("Expected " & Tokens.Identifier'Image 
+       & "(" & Identifier & ") but found " 
+       & Current_Token_Image(Self));
 
    procedure Match
       (Self       : in out Instance;
@@ -58,7 +118,7 @@ package body Compiler.Parser is
    is begin
       Self.Match(Tokens.Identifier);
       if Self.Token_Value /= Identifier then
-         Self.Expected(Identifier);
+         Self.Error(Identifier_Error_Image(Self, Identifier));
       end if;
    end Match;
 
@@ -67,7 +127,7 @@ package body Compiler.Parser is
        Token :        Tokens.Token_Kind) 
    is begin
       if not Self.Match(Token) then
-         Self.Expected(Token'Image);
+         Self.Error(Token_Error_Image(Self, Token));
       end if;
    end Match;
 
@@ -76,7 +136,7 @@ package body Compiler.Parser is
        Token :        Tokens.Token_Kind) 
        return Boolean
    is begin
-      if Self.Token_Kind(Self.Next) = Token then
+      if Self.Is_Running and then Self.Token_Kind(Self.Next) = Token then
          Self.Scan;
          return True;
       else
@@ -103,7 +163,7 @@ package body Compiler.Parser is
       if ID in Valid_Attribute then
          Info := Attribute_Info(ID);
       else
-         Self.Expected("Valid attribute");
+         Self.Error("Expected valid ATTRIBUTE but found " & Self.Token_Value);
       end if;
 
    end Attribute_Identifier;
@@ -142,13 +202,17 @@ package body Compiler.Parser is
             ID := Aspect_ID(Base);
          end if;
 
-      end;
+         if ID in Valid_Aspect then
+            Info := Aspect_Info(ID);
+         else
+            Self.Error("Expected valid ASPECT but found " 
+                       & (if Self.Token_Kind = Tokens.Attribute then
+                              Base & "'" & Self.Token_Value
+                          else
+                              Base));
+         end if;
 
-      if ID in Valid_Aspect then
-         Info := Aspect_Info(ID);
-      else
-         Self.Expected("Valid Aspect", Line, Column);
-      end if;
+      end;
 
    end Aspect_Identifier;
 
@@ -167,7 +231,7 @@ package body Compiler.Parser is
       if ID in Valid_Pragma then
          Info := Pragma_Info(ID);
       else
-         Self.Expected("Valid Pragma");
+         Self.Error("Expected valid PRAGMA but found " & Self.Token_Value);
       end if;
 
    end Pragma_Identifier;
@@ -181,29 +245,27 @@ package body Compiler.Parser is
       raise Parsing_Error with Message;
    end Halt;
 
-   procedure Expected(Self : Instance; Message : String) is
+   procedure Error(Self : Instance; Message : String) is
       Token : Lexer.Token 
          renames Self.Lexer.All_Tokens.all(Self.Last);
    begin
-      Self.Expected(Message, Token.Line, Token.First);
-   end Expected;
+      Self.Error(Message, Token.Line, Token.First);
+   end Error;
 
-   procedure Expected
+   procedure Error
       (Self    : Instance; 
        Message : String;
        Token   : Lexer.Token)
    is begin
-      Self.Expected(Message, Token.Line, Token.First);
-   end Expected;
+      Self.Error(Message, Token.Line, Token.First);
+   end Error;
 
-   procedure Expected(Self : Instance; Message : String; Line, Column : Positive) is
+   procedure Error(Self : Instance; Message : String; Line, Column : Positive) is
    begin
       Self.Halt
-         (Message 
-          & " expected at " 
-          & Strings.Image(Line) 
-          & ":"
-          & Strings.Image(Column));
-   end Expected;
+         ("Parsing Error @ " 
+          & Strings.Image(Line) & ":" & Strings.Image(Column)
+          & " => " & Message);
+   end Error;
 
 end Compiler.Parser;

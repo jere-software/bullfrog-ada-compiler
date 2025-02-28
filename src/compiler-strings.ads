@@ -196,10 +196,10 @@ package Compiler.Strings is
       renames Element;
    function "+"(Item : String) return Holder
       renames To_Holder;
-   function "&"(L : Holder; R : String) return String
-      is (L.Element & R);
+   function "&"(L : Holder; R : String) return Holder
+      is (+(L.Constant_Reference & R));
    function "&"(L : String; R : Holder) return String
-      is (L & R.Element);
+      is (L & R.Constant_Reference);
 
    Empty_Holder : constant Holder := (Holders.Empty_Holder with null record);
 

@@ -28,15 +28,25 @@ package Compiler.Parser is
       (Self   : in out Instance; 
        Stream : not null access Ada.Streams.Root_Stream_Type'Class);
 
+   -- Resets parser state
+   procedure Initialize
+      (Self   : in out Instance;
+       Stream : not null access Ada.Streams.Root_Stream_Type'Class);
+
+   -- Inidicates if the parser is running or not
+   function Is_Running(Self : Instance) return Boolean
+      with Inline;
+
    -- Error when parsing.  More information in Message field
    Parsing_Error : exception;
 
 private
 
    type Instance is tagged limited record
-      Lexer : Compiler.Lexer.Instance;
-      Next  : Positive := 1;
-      Last  : Positive := 1;
+      Lexer   : Compiler.Lexer.Instance;
+      Next    : Positive := 1;
+      Last    : Positive := 1;
+      Running : Boolean := False;
    end record;
 
    -- Gets the next token
@@ -71,25 +81,32 @@ private
 
    -- Returns the Token_Kind value for the specified token
    function Token_Kind(Self : Instance; Index : Positive) return Tokens.Token_Kind
-      with Inline;
+      with  Inline,
+            Pre => Self.Lexer.All_Tokens.Length not in 0;
    
    -- Returns the Token_Kind value for the last token matched
    function Token_Kind(Self : Instance) return Tokens.Token_Kind
-      with Inline;
+      with  Inline,
+            Pre => Self.Lexer.All_Tokens.Length not in 0;
 
    -- Returns the string value for the specified token
    function Token_Value(Self : Instance; Index : Positive) return Strings.String
-      with Inline;
+      with  Inline,
+            Pre => Self.Lexer.All_Tokens.Length not in 0;
    
    -- Returns the string value for the last token matched
    function Token_Value(Self : Instance) return Strings.String
-      with Inline;
+      with  Inline,
+            Pre => Self.Lexer.All_Tokens.Length not in 0;
 
    -- Low level output operations
-   procedure Halt(Self : Instance; Message : String);
-   procedure Expected(Self : Instance; Message : String) with Inline;
-   procedure Expected(Self : Instance; Message : String; Token : Lexer.Token) with Inline;
-   procedure Expected(Self : Instance; Message : String; Line, Column : Positive)
-      with Inline;
+   procedure Halt(Self : Instance; Message : String)
+      with No_Return;
+   procedure Error(Self : Instance; Message : String) 
+      with Inline, No_Return;
+   procedure Error(Self : Instance; Message : String; Token : Lexer.Token)
+      with Inline, No_Return;
+   procedure Error(Self : Instance; Message : String; Line, Column : Positive)
+      with Inline, No_Return;
 
 end Compiler.Parser;

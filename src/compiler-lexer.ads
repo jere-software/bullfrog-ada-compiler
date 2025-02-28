@@ -61,7 +61,7 @@ package Compiler.Lexer is
    -- Individual operations for getting tokens from a stream one
    -- by one.  Call Initialize first, then use Is_Running and
    -- Get_Token to iterate through tokens
-   procedure Initialize(Self : in out Instance); -- Resets parser state
+   procedure Initialize(Self : in out Instance); -- Resets lexer state
    function Is_Running(Self : Instance) return Boolean with Inline;
    procedure Get_Token
       (Self   : in out Instance; 
@@ -70,20 +70,20 @@ package Compiler.Lexer is
 
    -- Last token info
    function Token_Kind(Self : Instance) return Tokens.Token_Kind
-      with Inline, 
-         Pre => Self.All_Tokens.Length not in 0;
+      with  Inline, 
+            Pre => Self.All_Tokens.Length not in 0;
    function Token_Value(Self : Instance) return Strings.String
-      with Inline, 
-         Pre => Self.All_Tokens.Length not in 0;
+      with  Inline, 
+            Pre => Self.All_Tokens.Length not in 0;
    function Token_Line(Self : Instance) return Positive
-      with Inline, 
-         Pre => Self.All_Tokens.Length not in 0;
+      with  Inline, 
+            Pre => Self.All_Tokens.Length not in 0;
    function Token_First(Self : Instance) return Positive
-      with Inline, 
-         Pre => Self.All_Tokens.Length not in 0;
+      with  Inline, 
+            Pre => Self.All_Tokens.Length not in 0;
    function Token_Last(Self : Instance) return Positive
-      with Inline, 
-         Pre => Self.All_Tokens.Length not in 0;
+      with  Inline, 
+            Pre => Self.All_Tokens.Length not in 0;
 
    -- Returns the current list of tokens found so far
    function All_Tokens(Self : aliased Instance) 
@@ -179,9 +179,11 @@ private
       with Pre => Self.Is_Running;
 
    -- Low level output operations
-   procedure Halt(Self : Instance; Message : String);
-   procedure Expected(Self : Instance; Message : String) with Inline;
+   procedure Halt(Self : Instance; Message : String)
+      with No_Return;
+   procedure Expected(Self : Instance; Message : String) 
+      with Inline, No_Return;
    procedure Expected(Self : Instance; Message : String; Line, Column : Positive)
-      with Inline;
+      with Inline, No_Return;
 
 end Compiler.Lexer;
