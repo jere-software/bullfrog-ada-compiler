@@ -13,6 +13,7 @@ with Compiler.Tokens;
 with Compiler.Attributes;
 with Compiler.Aspects;
 with Compiler.Pragmas;
+with Compiler.AST;
 
 
 -- Top level package for the parser
