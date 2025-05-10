@@ -21,7 +21,7 @@ package body Compiler.Parser is
    begin
       Self.Next    := 1;
       Self.Last    := 1;
-      Self.Running := True;
+      Self.Running := Self.Lexer.All_Tokens.Length > 0;
    end Reset;
 
    procedure Run(Self : in out Instance) is
@@ -31,8 +31,8 @@ package body Compiler.Parser is
 
    procedure Run(Self : in out Instance; Filename : Standard.String) is
    begin
-      Self.Reset;
       Self.Lexer.Run(Filename);
+      Reset(Self);
       Self.Run;
    end Run;
 
@@ -48,8 +48,8 @@ package body Compiler.Parser is
       (Self   : in out Instance;
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
    is begin  
-      Reset(Self);
       Self.Lexer.Run(Stream);
+      Reset(Self);
    end Initialize;
 
    function Is_Running(Self : Instance) return Boolean is
