@@ -29,15 +29,6 @@ package Compiler.Parser is
       (Self   : in out Instance; 
        Stream : not null access Ada.Streams.Root_Stream_Type'Class);
 
-   -- Resets parser state
-   procedure Initialize
-      (Self   : in out Instance;
-       Stream : not null access Ada.Streams.Root_Stream_Type'Class);
-
-   -- Inidicates if the parser is running or not
-   function Is_Running(Self : Instance) return Boolean
-      with Inline;
-
    -- Error when parsing.  More information in Message field
    Parsing_Error : exception;
 
