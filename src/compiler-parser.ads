@@ -53,6 +53,11 @@ private
    -- Gets the next token
    procedure Scan(Self : in out Instance);
 
+   -- Returns the upcoming token without progressing
+   function Peek(Self : Instance) return Tokens.Token_Kind
+      with  Inline,
+            Pre => Self.Next <= Self.Lexer.All_Tokens.Last_Index;
+
    -- Determines if the current token matches the specified item
    -- and progresses if so.  Returns a boolean indicating if a match was
    -- found
@@ -66,6 +71,9 @@ private
       (Self  : in out Instance; 
        Token :        Tokens.Token_Kind) 
        return Boolean;
+
+   -- Consumes the next token without matching
+   procedure Eat_Next(Self  : in out Instance);
 
    -- Matches and validates an identifier.  Returns
    -- pertinent info if a valid match, or halts parsing

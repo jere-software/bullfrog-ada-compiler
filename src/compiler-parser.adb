@@ -101,7 +101,7 @@ package body Compiler.Parser is
    function Token_Error_Image
       (Self  : Instance;
        Token : Tokens.Token_Kind)
-       return STrings.String 
+       return Strings.String 
    is ("Expected " & Token'Image & " but found " & Current_Token_Image(Self));
 
    function Identifier_Error_Image
@@ -111,6 +111,9 @@ package body Compiler.Parser is
    is ("Expected " & Tokens.Identifier'Image 
        & "(" & Identifier & ") but found " 
        & Current_Token_Image(Self));
+
+   function Peek(Self : Instance) return Tokens.Token_Kind is
+      (Self.Lexer.All_Tokens.all(Self.Next).Kind);
 
    procedure Match
       (Self       : in out Instance;
@@ -143,6 +146,15 @@ package body Compiler.Parser is
          return False;
       end if;
    end Match;
+
+   procedure Eat_Next(Self : in out Instance) is
+   begin
+      if Self.Is_Running then
+         Self.Scan;
+      else
+         Self.Error("Expected a token");
+      end if;
+   end Eat_Next;
 
    ------------------------------------------------------
    ------------- General Parsing Operations -------------
