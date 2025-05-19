@@ -5,15 +5,14 @@
 -- License, v. 2.0. If a copy of the MPL was not distributed with this
 -- file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-private with Compiler.Lexer;
-
 with Ada.Streams;
+with Compiler.Lexer;
 with Compiler.Strings;
 with Compiler.Tokens;
 with Compiler.Attributes;
 with Compiler.Aspects;
 with Compiler.Pragmas;
-
+with Compiler.AST;
 
 -- Top level package for the parser
 package Compiler.Parser is
@@ -23,34 +22,35 @@ package Compiler.Parser is
 
    -- Iterates through the stream and parses the tokens generted
    -- by the internal lexer
-   procedure Run(Self : in out Instance; Filename : Standard.String);
-   procedure Run
+   function Run(Self : in out Instance; Filename : Standard.String) return AST.Tree;
+   function Run
       (Self   : in out Instance; 
-       Stream : not null access Ada.Streams.Root_Stream_Type'Class);
-
-   -- Resets parser state
-   procedure Initialize
-      (Self   : in out Instance;
-       Stream : not null access Ada.Streams.Root_Stream_Type'Class);
-
-   -- Inidicates if the parser is running or not
-   function Is_Running(Self : Instance) return Boolean
-      with Inline;
+       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
+       return AST.Tree;
 
    -- Error when parsing.  More information in Message field
    Parsing_Error : exception;
 
+   function Lexer(Self : aliased Instance) 
+      return not null access constant Compiler.Lexer.Instance
+   with Inline;
+
 private
 
    type Instance is tagged limited record
-      Lexer   : Compiler.Lexer.Instance;
+      Lexer   : aliased Compiler.Lexer.Instance;
       Next    : Positive := 1;
       Last    : Positive := 1;
-      Running : Boolean := False;
+      Running : Boolean  := False;
    end record;
 
    -- Gets the next token
    procedure Scan(Self : in out Instance);
+
+   -- Returns the upcoming token without progressing
+   function Peek(Self : Instance) return Tokens.Token_Kind
+      with  Inline,
+            Pre => Self.Next <= Self.Lexer.All_Tokens.Last_Index;
 
    -- Determines if the current token matches the specified item
    -- and progresses if so.  Returns a boolean indicating if a match was
@@ -65,6 +65,9 @@ private
       (Self  : in out Instance; 
        Token :        Tokens.Token_Kind) 
        return Boolean;
+
+   -- Consumes the next token without matching
+   procedure Eat_Next(Self  : in out Instance);
 
    -- Matches and validates an identifier.  Returns
    -- pertinent info if a valid match, or halts parsing
@@ -104,7 +107,7 @@ private
       with No_Return;
    procedure Error(Self : Instance; Message : String) 
       with Inline, No_Return;
-   procedure Error(Self : Instance; Message : String; Token : Lexer.Token)
+   procedure Error(Self : Instance; Message : String; Token : Compiler.Lexer.Token)
       with Inline, No_Return;
    procedure Error(Self : Instance; Message : String; Line, Column : Positive)
       with Inline, No_Return;

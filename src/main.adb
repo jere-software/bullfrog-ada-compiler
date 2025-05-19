@@ -9,36 +9,44 @@ with Ada.Text_IO;
 with Ada.Exceptions;
 with Compiler.Lexer;
 with Compiler.Parser;
+with Compiler.AST;
 with Ada.Command_Line;
 with Ada.IO_Exceptions;
 
 -- Program entry point
 procedure Main is
-   Lexer : Compiler.Lexer.Instance;
    use Ada.Exceptions;
    use Ada.Command_Line;
 
-   procedure Lex(Filename : String) is
+   procedure Execute(Filename : String) is
+      Parser : Compiler.Parser.Instance;
    begin
-      Ada.Text_IO.Put("Lexing " & Filename & "... ");
-      Lexer.Run(Filename);
-      Ada.Text_IO.Put_Line("Tokens:");
-      Ada.Text_IO.Put_Line("---------------------------------");
-      
-      for Token of Lexer.All_Tokens.all loop
-         Compiler.Lexer.Debug(Token);
-      end loop;
+      Ada.Text_IO.Put("Parsing " & Filename & "... ");
+
+      declare
+         Tree : Compiler.AST.Tree := Parser.Run(Filename);
+      begin
+         Ada.Text_IO.Put_Line("Tokens:");
+         Ada.Text_IO.Put_Line("---------------------------------");
+         
+         for Token of Parser.Lexer.All_Tokens.all loop
+            Compiler.Lexer.Debug(Token);
+         end loop;
+      end;
       
    exception
       when E : Compiler.Lexer.Lexical_Error =>
          Ada.Text_IO.Put("LEXICAL ERROR: ");
+         Ada.Text_IO.Put_Line(Exception_Message(E));
+      when E : Compiler.Parser.Parsing_Error =>
+         Ada.Text_IO.Put("PARSING ERROR: ");
          Ada.Text_IO.Put_Line(Exception_Message(E));
       when E : Ada.IO_Exceptions.Name_Error =>
          Ada.Text_IO.Put_Line("Invalid filename");
       when E : others => 
          Ada.Text_IO.Put_Line("Unexpected exception occurred: " & Exception_Name(E));
          raise;
-   end Lex;
+   end Execute;
 
 begin
    case Argument_Count is
@@ -50,6 +58,6 @@ begin
    end case;
 
    for Number in 1 .. Argument_Count loop
-      Lex(Argument(Number));
+      Execute(Argument(Number));
    end loop;
 end Main;

@@ -16,44 +16,40 @@ package body Compiler.Parser is
    --------------- Core Parsing Operations --------------
    ------------------------------------------------------
 
-   -- Resets the parser to be in the running state
-   procedure Reset(Self : in out Instance) is
-   begin
+   -- General "Run" operation
+   function Run(Self : in out Instance) return AST.Tree is
+   begin 
+      -- Initialize parser state
       Self.Next    := 1;
       Self.Last    := 1;
-      Self.Running := True;
-   end Reset;
+      Self.Running := Self.Lexer.All_Tokens.Length not in 0;
 
-   procedure Run(Self : in out Instance) is
-   begin 
       null; -- TODO: main loop;
+
+      return Result : AST.Tree;
    end Run;
 
-   procedure Run(Self : in out Instance; Filename : Standard.String) is
+   function Run(Self : in out Instance; Filename : Standard.String) return AST.Tree is
    begin
-      Self.Reset;
       Self.Lexer.Run(Filename);
-      Self.Run;
+      return Run(Self);
    end Run;
 
-   procedure Run
+   function Run
       (Self   : in out Instance; 
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
+      return AST.Tree
    is begin
-      Self.Initialize(Stream);
-      Self.Run;
-   end Run;
-
-   procedure Initialize
-      (Self   : in out Instance;
-       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
-   is begin  
-      Reset(Self);
       Self.Lexer.Run(Stream);
-   end Initialize;
+      return Run(Self);
+   end Run;
 
    function Is_Running(Self : Instance) return Boolean is
       (Self.Running);
+
+   function Lexer(Self : aliased Instance) 
+      return not null access constant Compiler.Lexer.Instance is
+   (Self.Lexer'Access);
 
    ------------------------------------------------------
    ----------------- Utility Operations -----------------
@@ -83,7 +79,7 @@ package body Compiler.Parser is
       end if;
    end Scan;
 
-   function Token_Image(Token : Lexer.Token) return Strings.String is
+   function Token_Image(Token : Compiler.Lexer.Token) return Strings.String is
       (if Token.Kind in Tokens.Identifier 
                       | Tokens.Attribute 
                       | Tokens.Pragma_ID 
@@ -101,7 +97,7 @@ package body Compiler.Parser is
    function Token_Error_Image
       (Self  : Instance;
        Token : Tokens.Token_Kind)
-       return STrings.String 
+       return Strings.String 
    is ("Expected " & Token'Image & " but found " & Current_Token_Image(Self));
 
    function Identifier_Error_Image
@@ -111,6 +107,9 @@ package body Compiler.Parser is
    is ("Expected " & Tokens.Identifier'Image 
        & "(" & Identifier & ") but found " 
        & Current_Token_Image(Self));
+
+   function Peek(Self : Instance) return Tokens.Token_Kind is
+      (Self.Lexer.All_Tokens.all(Self.Next).Kind);
 
    procedure Match
       (Self       : in out Instance;
@@ -143,6 +142,15 @@ package body Compiler.Parser is
          return False;
       end if;
    end Match;
+
+   procedure Eat_Next(Self : in out Instance) is
+   begin
+      if Self.Is_Running then
+         Self.Scan;
+      else
+         Self.Error("Expected a token");
+      end if;
+   end Eat_Next;
 
    ------------------------------------------------------
    ------------- General Parsing Operations -------------
@@ -246,7 +254,7 @@ package body Compiler.Parser is
    end Halt;
 
    procedure Error(Self : Instance; Message : String) is
-      Token : Lexer.Token 
+      Token : Compiler.Lexer.Token 
          renames Self.Lexer.All_Tokens.all(Self.Last);
    begin
       Self.Error(Message, Token.Line, Token.First);
@@ -255,7 +263,7 @@ package body Compiler.Parser is
    procedure Error
       (Self    : Instance; 
        Message : String;
-       Token   : Lexer.Token)
+       Token   : Compiler.Lexer.Token)
    is begin
       Self.Error(Message, Token.Line, Token.First);
    end Error;
