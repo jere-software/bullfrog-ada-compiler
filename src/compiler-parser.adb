@@ -1,4 +1,4 @@
--- Copyright (C) 2024
+-- Copyright (C) 2024 - 2025
 -- Jeremiah Breeden
 --
 -- This Source Code Form is subject to the terms of the Mozilla Public

@@ -1,4 +1,4 @@
--- Copyright (C) 2024
+-- Copyright (C) 2024 - 2025
 -- Jeremiah Breeden
 --
 -- This Source Code Form is subject to the terms of the Mozilla Public
@@ -13,6 +13,7 @@ with Ada.Containers.Indefinite_Holders;
 with Ada.Containers.Indefinite_Vectors;
 with Ada.Strings.Hash;
 with Ada.Strings.Fixed;
+with Ada.Streams;
 
 -- Compiler string interface.  This package is meant to be
 -- an interface for the whole compiler.  So it can be 
@@ -205,5 +206,34 @@ package Compiler.Strings is
 
    package Vectors is new Ada.Containers.Indefinite_Vectors(Positive, String);
    type Vector is new Vectors.Vector with null record;
+
+   -- Primary stream type.  Read only, create using constructor
+   type Read_Only_Stream(<>) is new Ada.Streams.Root_Stream_Type with private;
+
+   -- Constructing function
+   function Make(Value : String) return Read_Only_Stream;
+
+   -- Ada.Streams override
+   overriding 
+   procedure Read
+      (Stream : in out Read_Only_Stream;
+       Item   :    out Ada.Streams.Stream_Element_Array;
+       Last   :    out Ada.Streams.Stream_Element_Offset);
+
+   -- Ada.Streams override, not implemented, raises an exception
+   overriding
+   procedure Write
+      (Stream : in out Read_Only_Stream;
+       Item   : in     Ada.Streams.Stream_Element_Array);
+
+private
+
+   type Read_Only_Stream 
+      (Capacity : Natural)
+   is new Ada.Streams.Root_Stream_Type with record
+      String     : Strings.String(1..Capacity);
+      Remaining  : Natural  := 0;
+      Index      : Positive := 1;
+   end record;
 
 end Compiler.Strings;
