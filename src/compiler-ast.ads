@@ -10,6 +10,8 @@ with Ada.Containers.Indefinite_Vectors;
 
 limited with Compiler.AST.Visitors;
 
+with Compiler.Lexer;
+
 -- Provides interface to abstract syntax trees
 package Compiler.AST is
 
@@ -18,7 +20,9 @@ package Compiler.AST is
    -----------------------------------------------
 
    -- Primary abstract base for all AST nodes
-   type Node is abstract tagged null record;
+   type Node is abstract tagged record
+      Token : Lexer.Token; -- Primary token referenced by the node
+   end record;
 
    -- Visits the node with read only access
    procedure Visit

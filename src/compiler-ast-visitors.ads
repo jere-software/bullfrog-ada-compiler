@@ -21,5 +21,13 @@ package Compiler.AST.Visitors is
    -- Visits the node (both read-only and modify access options for each node)
    procedure Visit(Visitor : in out Read_Only;   Node :        Nodes.Literal) is abstract;
    procedure Visit(Visitor : in out Full_Access; Node : in out Nodes.Literal) is abstract;
+   procedure Visit(Visitor : in out Read_Only;   Node :        Nodes.Name) is abstract;
+   procedure Visit(Visitor : in out Full_Access; Node : in out Nodes.Name) is abstract;
+   procedure Visit(Visitor : in out Read_Only;   Node :        Nodes.Null_Statement) is abstract;
+   procedure Visit(Visitor : in out Full_Access; Node : in out Nodes.Null_Statement) is abstract;
+   procedure Visit(Visitor : in out Read_Only;   Node :        Nodes.Unary_Operation) is abstract;
+   procedure Visit(Visitor : in out Full_Access; Node : in out Nodes.Unary_Operation) is abstract;
+   procedure Visit(Visitor : in out Read_Only;   Node :        Nodes.Binary_Operation) is abstract;
+   procedure Visit(Visitor : in out Full_Access; Node : in out Nodes.Binary_Operation) is abstract;
 
 end Compiler.AST.Visitors;

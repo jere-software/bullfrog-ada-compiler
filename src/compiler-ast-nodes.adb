@@ -25,4 +25,60 @@ package body Compiler.AST.Nodes is
       Visitor.Visit(Self);
    end Visit;
 
+   procedure Visit
+      (Self    :        Name; 
+       Visitor : in out Visitors.Read_Only'Class)
+   is begin
+      Visitor.Visit(Self);
+   end Visit;
+
+   procedure Visit
+      (Self    : in out Name; 
+       Visitor : in out Visitors.Full_Access'Class)
+   is begin
+      Visitor.Visit(Self);
+   end Visit;
+
+   procedure Visit
+      (Self    :        Null_Statement; 
+       Visitor : in out Visitors.Read_Only'Class)
+   is begin
+      Visitor.Visit(Self);
+   end Visit;
+
+   procedure Visit
+      (Self    : in out Null_Statement; 
+       Visitor : in out Visitors.Full_Access'Class)
+   is begin
+      Visitor.Visit(Self);
+   end Visit;
+
+   procedure Visit
+      (Self    :        Unary_Operation; 
+       Visitor : in out Visitors.Read_Only'Class)
+   is begin
+      Visitor.Visit(Self);
+   end Visit;
+
+   procedure Visit
+      (Self    : in out Unary_Operation; 
+       Visitor : in out Visitors.Full_Access'Class)
+   is begin
+      Visitor.Visit(Self);
+   end Visit;
+
+   procedure Visit
+      (Self    :        Binary_Operation; 
+       Visitor : in out Visitors.Read_Only'Class)
+   is begin
+      Visitor.Visit(Self);
+   end Visit;
+
+   procedure Visit
+      (Self    : in out Binary_Operation; 
+       Visitor : in out Visitors.Full_Access'Class)
+   is begin
+      Visitor.Visit(Self);
+   end Visit;
+
 end Compiler.AST.Nodes;
