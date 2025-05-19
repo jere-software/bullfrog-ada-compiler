@@ -108,4 +108,13 @@ package Compiler.AST is
    procedure Clear(Self : in out Node_List)
       with Inline;
 
+   -----------------------------------------------
+   -- AST Tree interface
+   -----------------------------------------------
+
+   -- Primary tree type
+   type Tree is tagged limited record
+      Root : Any_Node;
+   end record;
+
 end Compiler.AST;

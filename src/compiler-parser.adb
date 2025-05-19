@@ -17,7 +17,7 @@ package body Compiler.Parser is
    ------------------------------------------------------
 
    -- General "Run" operation
-   procedure Run(Self : in out Instance) is
+   function Run(Self : in out Instance) return AST.Tree is
    begin 
       -- Initialize parser state
       Self.Next    := 1;
@@ -25,24 +25,31 @@ package body Compiler.Parser is
       Self.Running := Self.Lexer.All_Tokens.Length not in 0;
 
       null; -- TODO: main loop;
+
+      return Result : AST.Tree;
    end Run;
 
-   procedure Run(Self : in out Instance; Filename : Standard.String) is
+   function Run(Self : in out Instance; Filename : Standard.String) return AST.Tree is
    begin
       Self.Lexer.Run(Filename);
-      Run(Self);
+      return Run(Self);
    end Run;
 
-   procedure Run
+   function Run
       (Self   : in out Instance; 
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
+      return AST.Tree
    is begin
       Self.Lexer.Run(Stream);
-      Run(Self);
+      return Run(Self);
    end Run;
 
    function Is_Running(Self : Instance) return Boolean is
       (Self.Running);
+
+   function Lexer(Self : aliased Instance) 
+      return not null access constant Compiler.Lexer.Instance is
+   (Self.Lexer'Access);
 
    ------------------------------------------------------
    ----------------- Utility Operations -----------------
@@ -72,7 +79,7 @@ package body Compiler.Parser is
       end if;
    end Scan;
 
-   function Token_Image(Token : Lexer.Token) return Strings.String is
+   function Token_Image(Token : Compiler.Lexer.Token) return Strings.String is
       (if Token.Kind in Tokens.Identifier 
                       | Tokens.Attribute 
                       | Tokens.Pragma_ID 
@@ -247,7 +254,7 @@ package body Compiler.Parser is
    end Halt;
 
    procedure Error(Self : Instance; Message : String) is
-      Token : Lexer.Token 
+      Token : Compiler.Lexer.Token 
          renames Self.Lexer.All_Tokens.all(Self.Last);
    begin
       Self.Error(Message, Token.Line, Token.First);
@@ -256,7 +263,7 @@ package body Compiler.Parser is
    procedure Error
       (Self    : Instance; 
        Message : String;
-       Token   : Lexer.Token)
+       Token   : Compiler.Lexer.Token)
    is begin
       Self.Error(Message, Token.Line, Token.First);
    end Error;

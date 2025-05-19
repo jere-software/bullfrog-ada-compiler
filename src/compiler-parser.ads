@@ -5,16 +5,14 @@
 -- License, v. 2.0. If a copy of the MPL was not distributed with this
 -- file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-private with Compiler.Lexer;
-
 with Ada.Streams;
+with Compiler.Lexer;
 with Compiler.Strings;
 with Compiler.Tokens;
 with Compiler.Attributes;
 with Compiler.Aspects;
 with Compiler.Pragmas;
 with Compiler.AST;
-
 
 -- Top level package for the parser
 package Compiler.Parser is
@@ -24,18 +22,23 @@ package Compiler.Parser is
 
    -- Iterates through the stream and parses the tokens generted
    -- by the internal lexer
-   procedure Run(Self : in out Instance; Filename : Standard.String);
-   procedure Run
+   function Run(Self : in out Instance; Filename : Standard.String) return AST.Tree;
+   function Run
       (Self   : in out Instance; 
-       Stream : not null access Ada.Streams.Root_Stream_Type'Class);
+       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
+       return AST.Tree;
 
    -- Error when parsing.  More information in Message field
    Parsing_Error : exception;
 
+   function Lexer(Self : aliased Instance) 
+      return not null access constant Compiler.Lexer.Instance
+   with Inline;
+
 private
 
    type Instance is tagged limited record
-      Lexer   : Compiler.Lexer.Instance;
+      Lexer   : aliased Compiler.Lexer.Instance;
       Next    : Positive := 1;
       Last    : Positive := 1;
       Running : Boolean  := False;
@@ -104,7 +107,7 @@ private
       with No_Return;
    procedure Error(Self : Instance; Message : String) 
       with Inline, No_Return;
-   procedure Error(Self : Instance; Message : String; Token : Lexer.Token)
+   procedure Error(Self : Instance; Message : String; Token : Compiler.Lexer.Token)
       with Inline, No_Return;
    procedure Error(Self : Instance; Message : String; Line, Column : Positive)
       with Inline, No_Return;
