@@ -38,7 +38,7 @@ private
       Lexer   : Compiler.Lexer.Instance;
       Next    : Positive := 1;
       Last    : Positive := 1;
-      Running : Boolean := False;
+      Running : Boolean  := False;
    end record;
 
    -- Gets the next token

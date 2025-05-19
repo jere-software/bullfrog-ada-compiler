@@ -16,23 +16,20 @@ package body Compiler.Parser is
    --------------- Core Parsing Operations --------------
    ------------------------------------------------------
 
-   -- Resets the parser to be in the running state
-   procedure Reset(Self : in out Instance) is
-   begin
+   -- General "Run" operation
+   procedure Run(Self : in out Instance) is
+   begin 
+      -- Initialize parser state
       Self.Next    := 1;
       Self.Last    := 1;
       Self.Running := Self.Lexer.All_Tokens.Length not in 0;
-   end Reset;
 
-   procedure Run(Self : in out Instance) is
-   begin 
       null; -- TODO: main loop;
    end Run;
 
    procedure Run(Self : in out Instance; Filename : Standard.String) is
    begin
       Self.Lexer.Run(Filename);
-      Reset(Self);
       Run(Self);
    end Run;
 
@@ -41,7 +38,6 @@ package body Compiler.Parser is
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
    is begin
       Self.Lexer.Run(Stream);
-      Reset(Self);
       Run(Self);
    end Run;
 
