@@ -181,9 +181,9 @@ private
    -- Low level output operations
    procedure Halt(Self : Instance; Message : String)
       with No_Return;
-   procedure Expected(Self : Instance; Message : String) 
+   procedure Error(Self : Instance; Message : String) 
       with Inline, No_Return;
-   procedure Expected(Self : Instance; Message : String; Line, Column : Positive)
+   procedure Error(Self : Instance; Message : String; Line, Column : Positive)
       with Inline, No_Return;
 
 end Compiler.Lexer;

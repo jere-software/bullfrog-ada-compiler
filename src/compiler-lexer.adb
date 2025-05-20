@@ -219,7 +219,7 @@ package body Compiler.Lexer is
             Self.Get_Comment(Stream);
          end if;
       elsif Self.Is_Running then
-         Self.Expected("A valid token");
+         Self.Error("Expected a valid token");
       end if;
 
    end Get_Token;
@@ -267,14 +267,14 @@ package body Compiler.Lexer is
                if          Self.Next_In = Strings.Underscore 
                   and then Self.Last_In = Self.Next_In 
                then
-                  Self.Expected("Double underscore found, single underscore");
+                  Self.Error("Double underscore found, single underscore expected");
                end if;
                Temp(Index) := Self.Next_In;
                Last := Self.Column;
                Self.Get_Character(Stream);
             else
                if Self.Last_In = Strings.Underscore then
-                  Self.Expected("Name ends in underscore, alphanumeric");
+                  Self.Error("Name ends in underscore, alphanumeric expected");
                end if;
                return Temp(1..Index-1);
             end if;
@@ -330,14 +330,14 @@ package body Compiler.Lexer is
       
       Self.Get_Character(Stream); -- Munch apostrophe
       if not Strings.Is_Graphic(Self.Next_In) then
-         Self.Expected("Non graphic character found.  Character literal");
+         Self.Error("Non graphic character found.  Character literal expected");
       end if;
 
       Temp := Self.Next_In;
 
       Self.Get_Character(Stream);
       if Self.Next_In /= Strings.Apostrophe then
-         Self.Expected("Closing apostrophe not found.  Character literal");
+         Self.Error("Closing apostrophe not found.  Character literal expected");
       end if;
 
       Self.Add_Token
@@ -407,7 +407,7 @@ package body Compiler.Lexer is
          end loop;
 
          if not Quote_Found then
-            Self.Expected("Closing quotation not found.  String literal");
+            Self.Error("Closing quotation not found.  String literal expected");
          end if;
 
          return Result(1..Natural(Index)-1);
@@ -436,20 +436,24 @@ package body Compiler.Lexer is
       raise Lexical_Error with Message;
    end Halt;
 
-   procedure Expected(Self : Instance; Message : String) is
+   procedure Error(Self : Instance; Message : String) is
    begin
-      Self.Expected(Message, Self.Line, Self.Column);
-   end Expected;
+      Self.Error(Message, Self.Line, Self.Column);
+   end Error;
 
-   procedure Expected(Self : Instance; Message : String; Line, Column : Positive) is
+   procedure Error(Self : Instance; Message : String; Line, Column : Positive) is
    begin
       Self.Halt
-         (Message 
-          & " expected at " 
-          & Strings.Image(Line) 
-          & ":"
-          & Strings.Image(Column));
-   end Expected;
+         ("Lexical Error @ "
+          & Strings.Image(Line) & ":" & Strings.Image(Column)
+          & " => " & Message);
+      --Self.Halt
+      --   (Message 
+      --    & " expected at " 
+      --    & Strings.Image(Line) 
+      --    & ":"
+      --    & Strings.Image(Column));
+   end Error;
 
    procedure Debug(Self : Instance) is
       use Strings.Text_IO;
