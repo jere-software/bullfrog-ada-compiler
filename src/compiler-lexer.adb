@@ -447,12 +447,6 @@ package body Compiler.Lexer is
          ("Lexical Error @ "
           & Strings.Image(Line) & ":" & Strings.Image(Column)
           & " => " & Message);
-      --Self.Halt
-      --   (Message 
-      --    & " expected at " 
-      --    & Strings.Image(Line) 
-      --    & ":"
-      --    & Strings.Image(Column));
    end Error;
 
    procedure Debug(Self : Instance) is

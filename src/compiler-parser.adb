@@ -79,6 +79,27 @@ package body Compiler.Parser is
       end if;
    end Scan;
 
+   function Mark(Self : Instance) return Positive is (Self.Last);
+
+   procedure Release(Self : in out Instance; Mark : Positive) is
+      Last : constant Positive := Self.Lexer.All_Tokens.Last_Index;
+   begin
+      -- If the supplied mark is not the last, then
+      -- Set Last as Mark, and Next as the following
+      -- position
+      if Mark < Last then
+         Self.Last := Mark;
+         Self.Next := Mark + 1;
+      
+      -- Otherwise, set both the last index.  This
+      -- bounds the values in the same way that the
+      -- Scan operation does.
+      else
+         Self.Last := Last;
+         Self.Next := Last;
+      end if;
+   end Release;
+
    function Token_Image(Token : Compiler.Lexer.Token) return Strings.String is
       (if Token.Kind in Tokens.Identifier 
                       | Tokens.Attribute 

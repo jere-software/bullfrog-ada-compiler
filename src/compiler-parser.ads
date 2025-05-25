@@ -52,6 +52,19 @@ private
       with  Inline,
             Pre => Self.Next <= Self.Lexer.All_Tokens.Last_Index;
 
+   -- Returns the current index which can be supplied back to 
+   -- a call to the Release operation to get back to this point
+   -- if needed
+   function Mark(Self : Instance) return Positive 
+      with  Inline,
+            Pre => Self.Last <= Self.Lexer.All_Tokens.Last_Index;
+
+   -- Returns the parser back to the supplied index.  This 
+   -- index is generally the one supplied by a call to
+   -- the Mark operation
+   procedure Release(Self : in out Instance; Mark : Positive)
+      with Pre => Mark <= Self.Lexer.All_Tokens.Last_Index;
+
    -- Determines if the current token matches the specified item
    -- and progresses if so.  Returns a boolean indicating if a match was
    -- found
