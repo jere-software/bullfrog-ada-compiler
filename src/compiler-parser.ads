@@ -125,4 +125,12 @@ private
    procedure Error(Self : Instance; Message : String; Line, Column : Positive)
       with Inline, No_Return;
 
+   -- Expression parsing
+   function Expression(Self : in out Instance) return AST.Node'Class;
+   function Relation(Self : in out Instance) return AST.Node'Class;
+   function Simple_Expression(Self : in out Instance) return AST.Node'Class;
+   function Term(Self : in out Instance) return AST.Node'Class;
+   function Factor(Self : in out Instance) return AST.Node'Class;
+   function Primary(Self : in out Instance) return AST.Node'Class;
+
 end Compiler.Parser;

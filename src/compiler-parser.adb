@@ -297,4 +297,26 @@ package body Compiler.Parser is
           & " => " & Message);
    end Error;
 
+   ------------------------------------------------------
+   ------------- Syntax Parsing Operations --------------
+   ------------------------------------------------------
+
+   package Expressions is
+      function Expression(Self : in out Instance) return AST.Node'Class;
+      function Relation(Self : in out Instance) return AST.Node'Class;
+      function Simple_Expression(Self : in out Instance) return AST.Node'Class;
+      function Term(Self : in out Instance) return AST.Node'Class;
+      function Factor(Self : in out Instance) return AST.Node'Class;
+      function Primary(Self : in out Instance) return AST.Node'Class;
+   end Expressions;  
+
+   package body Expressions is separate;
+
+   function Expression(Self : in out Instance) return AST.Node'Class renames Expressions.Expression;
+   function Relation(Self : in out Instance) return AST.Node'Class renames Expressions.Relation;
+   function Simple_Expression(Self : in out Instance) return AST.Node'Class renames Expressions.Simple_Expression;
+   function Term(Self : in out Instance) return AST.Node'Class renames Expressions.Term;
+   function Factor(Self : in out Instance) return AST.Node'Class renames Expressions.Factor;
+   function Primary(Self : in out Instance) return AST.Node'Class renames Expressions.Primary;
+
 end Compiler.Parser;

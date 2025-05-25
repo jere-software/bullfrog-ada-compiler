@@ -46,7 +46,8 @@ package Compiler.AST.Nodes is
 
    -- Two argument operations keyword
    type Binary_Operation is new Node with record
-      Left, Right : Any_Node;
+      Left, Right   : Any_Node;
+      Short_Circuit : Boolean := False;
    end record;
 
    -- Overrides for the abstract node base class
