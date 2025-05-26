@@ -24,9 +24,10 @@ package body Compiler.Parser is
       Self.Last    := 1;
       Self.Running := Self.Lexer.All_Tokens.Length not in 0;
 
-      null; -- TODO: main loop;
-
-      return Result : AST.Tree;
+      return Result : AST.Tree := (Root => AST.Make(Self.Expression)) do
+         Strings.Text_IO.Put_Line("Last Token Parsed is " & Self.Token_Kind'Image
+            & " => " & Self.Token_Value);
+      end return;
    end Run;
 
    function Run(Self : in out Instance; Filename : Standard.String) return AST.Tree is
@@ -64,6 +65,11 @@ package body Compiler.Parser is
       is (Self.Lexer.All_Tokens.all(Index).Value.Get);
    function Token_Value(Self : Instance) return Strings.String
       is (Self.Token_Value(Self.Last));
+
+   function Token(Self : Instance; Index : Positive) return Compiler.Lexer.Token
+      is (Self.Lexer.All_Tokens.all(Index));
+   function Token(Self : Instance) return Compiler.Lexer.Token
+      is (Self.Token(Self.Last));
 
    ------------------------------------------------------
    ------------ Low Level Parsing Operations ------------
@@ -169,7 +175,7 @@ package body Compiler.Parser is
       if Self.Is_Running then
          Self.Scan;
       else
-         Self.Error("Expected a token");
+         Self.Error("Expected a token", Self.Token.Line, Self.Token.Last + 1);
       end if;
    end Eat_Next;
 
@@ -301,6 +307,7 @@ package body Compiler.Parser is
    ------------- Syntax Parsing Operations --------------
    ------------------------------------------------------
 
+   -- Expression parsing
    package Expressions is
       function Expression(Self : in out Instance) return AST.Node'Class;
       function Relation(Self : in out Instance) return AST.Node'Class;

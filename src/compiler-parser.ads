@@ -115,6 +115,16 @@ private
       with  Inline,
             Pre => Self.Lexer.All_Tokens.Length not in 0;
 
+   -- Returns the entire token for the specified index
+   function Token(Self : Instance; Index : Positive) return Compiler.Lexer.Token
+      with  Inline,
+            Pre => Self.Lexer.All_Tokens.Length not in 0;
+
+   -- Returns the entire last token matched
+   function Token(Self : Instance) return Compiler.Lexer.Token
+      with  Inline,
+            Pre => Self.Lexer.All_Tokens.Length not in 0;
+
    -- Low level output operations
    procedure Halt(Self : Instance; Message : String)
       with No_Return;
