@@ -105,9 +105,9 @@ package body Expressions is
    begin
       -- Search for easy to parse relations first
       case Self.Peek is
-         when Tokens.Keyword_Raise => Self.Error("Raise expression not supported yet");
-         when Tokens.Keyword_Not   => Self.Error("Membership test not supported yet");
-         when Tokens.Keyword_In    => Self.Error("Membership test not supported yet");
+         when Tokens.Keyword_Raise => Self.Eat_Next; Self.Error("Raise expression not supported yet");
+         when Tokens.Keyword_Not   => Self.Eat_Next; Self.Error("Membership test not supported yet");
+         when Tokens.Keyword_In    => Self.Eat_Next; Self.Error("Membership test not supported yet");
          when others => null;
       end case;
 
