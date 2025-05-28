@@ -30,48 +30,55 @@ package body Expressions is
       -- status is maintained
       procedure Do_Short_Circuit_Loop
          (Operator               : Tokens.Token_Kind;
-          Short_Circuit_Operator : Tokens.Token_Kind;
-          Should_Short_Circuit   : Boolean)
+          Short_Circuit_Operator : Tokens.Token_Kind)
       is begin
-         loop
 
-            -- Generate the result
-            Result := Make(Nodes.Binary_Operation'
-               (Token         => Token,
-                Left          => Result,
-                Right         => Make(Self.Relation),
-                Short_Circuit => Should_Short_Circuit));
+         -- Eat the AND / OR
+         Self.Eat_Next;
+         Token := Self.Token;
 
-            -- Stop if operators don't match
-            exit when not Self.Match(Operator);
-            Token := Self.Token;
+         declare
+            -- See if it is followed by a short circuit keyword
+            Should_Short_Circuit : constant Boolean := Self.Match(Short_Circuit_Operator);
+         begin
 
-            -- Verify consistent short circuit operation.  If not,
-            -- then send error mentioning parenthesis
-            if Should_Short_Circuit /= Self.Match(Short_Circuit_Operator) then 
-               Self.Error("Mixed logical expressions need parenthesis", Token.Line, Token.First);
-            end if;
+            -- Loop though looking for repeats on the operator.
+            -- Must have consistant short circuit status
+            loop
 
-         end loop;
+               -- Generate the result
+               Result := Make(Nodes.Binary_Operation'
+                  (Token         => Token,
+                   Left          => Result,
+                   Right         => Make(Self.Relation),
+                   Short_Circuit => Should_Short_Circuit));
+
+               -- Stop if operators don't match
+               exit when not Self.Match(Operator);
+               Token := Self.Token;
+
+               -- Verify consistent short circuit operation.  If not,
+               -- then send error mentioning parenthesis
+               if Should_Short_Circuit /= Self.Match(Short_Circuit_Operator) then 
+                  Self.Error("Mixed logical expressions need parenthesis", Token.Line, Token.First);
+               end if;
+
+            end loop;
+            
+         end;
       end Do_Short_Circuit_Loop;
 
    begin
 
       case Self.Peek is
          when Tokens.Keyword_And =>
-            Self.Eat_Next;
-            Token := Self.Token;
             Do_Short_Circuit_Loop
                (Operator               => Tokens.Keyword_And,
-                Short_Circuit_Operator => Tokens.Keyword_Then,
-                Should_Short_Circuit   => Self.Match(Tokens.Keyword_Then));
+                Short_Circuit_Operator => Tokens.Keyword_Then);
          when Tokens.Keyword_Or =>
-            Self.Eat_Next;
-            Token := Self.Token;
             Do_Short_Circuit_Loop
                (Operator               => Tokens.Keyword_Or,
-                Short_Circuit_Operator => Tokens.Keyword_Else,
-                Should_Short_Circuit   => Self.Match(Tokens.Keyword_Else));
+                Short_Circuit_Operator => Tokens.Keyword_Else);
          when Tokens.Keyword_Xor =>
             while Self.Match(Tokens.Keyword_Xor) loop
                Result := Make(Nodes.Binary_Operation'
