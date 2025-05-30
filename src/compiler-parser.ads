@@ -37,6 +37,9 @@ package Compiler.Parser is
 
 private
 
+   -- Local type rename
+   subtype Lexer_Token is Compiler.Lexer.Token;
+
    type Instance is tagged limited record
       Lexer   : aliased Compiler.Lexer.Instance;
       Next    : Positive := 1;
@@ -66,8 +69,9 @@ private
       with Pre => Mark <= Self.Lexer.All_Tokens.Last_Index;
 
    -- Determines if the current token matches the specified item
-   -- and progresses if so.  Returns a boolean indicating if a match was
-   -- found
+   -- and progresses if so.  Optionally returns a boolean indicating 
+   -- if a match was found.  If the optional boolean isn't used then
+   -- an exception is raised when no match is found.
    procedure Match
       (Self       : in out Instance;
        Identifier :        Strings.String);
@@ -80,7 +84,10 @@ private
        return Boolean;
 
    -- Consumes the next token without matching
+   -- and optionally returns it.  Raises an exception
+   -- if there is no token to eat.
    procedure Eat_Next(Self  : in out Instance);
+   function Eat_Next(Self : in out Instance) return Lexer_Token;
 
    -- Matches and validates an identifier.  Returns
    -- pertinent info if a valid match, or halts parsing
@@ -116,12 +123,12 @@ private
             Pre => Self.Lexer.All_Tokens.Length not in 0;
 
    -- Returns the entire token for the specified index
-   function Token(Self : Instance; Index : Positive) return Compiler.Lexer.Token
+   function Token(Self : Instance; Index : Positive) return Lexer_Token
       with  Inline,
             Pre => Self.Lexer.All_Tokens.Length not in 0;
 
    -- Returns the entire last token matched
-   function Token(Self : Instance) return Compiler.Lexer.Token
+   function Token(Self : Instance) return Lexer_Token
       with  Inline,
             Pre => Self.Lexer.All_Tokens.Length not in 0;
 
@@ -130,7 +137,7 @@ private
       with No_Return;
    procedure Error(Self : Instance; Message : String) 
       with Inline, No_Return;
-   procedure Error(Self : Instance; Message : String; Token : Compiler.Lexer.Token)
+   procedure Error(Self : Instance; Message : String; Token : Lexer_Token)
       with Inline, No_Return;
    procedure Error(Self : Instance; Message : String; Line, Column : Positive)
       with Inline, No_Return;

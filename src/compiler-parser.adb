@@ -66,9 +66,9 @@ package body Compiler.Parser is
    function Token_Value(Self : Instance) return Strings.String
       is (Self.Token_Value(Self.Last));
 
-   function Token(Self : Instance; Index : Positive) return Compiler.Lexer.Token
+   function Token(Self : Instance; Index : Positive) return Lexer_Token
       is (Self.Lexer.All_Tokens.all(Index));
-   function Token(Self : Instance) return Compiler.Lexer.Token
+   function Token(Self : Instance) return Lexer_Token
       is (Self.Token(Self.Last));
 
    ------------------------------------------------------
@@ -80,8 +80,13 @@ package body Compiler.Parser is
       Self.Last := Self.Next;
       if Self.Next < Self.Lexer.All_Tokens.Last_Index then
          Self.Next := Self.Next + 1;
-      else
+      elsif Self.Running then
          Self.Running := False;
+      else
+         Self.Error
+            (Message => "Premature end of File",
+             Line    => Self.Token.Line,
+             Column  => Self.Token.Last + 1);
       end if;
    end Scan;
 
@@ -106,7 +111,7 @@ package body Compiler.Parser is
       end if;
    end Release;
 
-   function Token_Image(Token : Compiler.Lexer.Token) return Strings.String is
+   function Token_Image(Token : Lexer_Token) return Strings.String is
       (if Token.Kind in Tokens.Identifier 
                       | Tokens.Attribute 
                       | Tokens.Pragma_ID 
@@ -177,6 +182,12 @@ package body Compiler.Parser is
       else
          Self.Error("Expected a token", Self.Token.Line, Self.Token.Last + 1);
       end if;
+   end Eat_Next;
+
+   function Eat_Next(Self : in out Instance) return Lexer_Token is
+   begin
+      Self.Eat_Next;
+      return Self.Token;
    end Eat_Next;
 
    ------------------------------------------------------
@@ -281,16 +292,14 @@ package body Compiler.Parser is
    end Halt;
 
    procedure Error(Self : Instance; Message : String) is
-      Token : Compiler.Lexer.Token 
-         renames Self.Lexer.All_Tokens.all(Self.Last);
    begin
-      Self.Error(Message, Token.Line, Token.First);
+      Self.Error(Message, Self.Token);
    end Error;
 
    procedure Error
       (Self    : Instance; 
        Message : String;
-       Token   : Compiler.Lexer.Token)
+       Token   : Lexer_Token)
    is begin
       Self.Error(Message, Token.Line, Token.First);
    end Error;
