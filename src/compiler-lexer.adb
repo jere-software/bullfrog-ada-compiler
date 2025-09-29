@@ -109,6 +109,11 @@ package body Compiler.Lexer is
 
    end Run;
 
+   procedure Enable_Comments(Self : in out Instance) is
+   begin
+      Self.Comments_On := True;
+   end Enable_Comments;
+
    function Is_Running(Self : Instance) return Boolean is
       (Self.State /= Idle);
 
@@ -216,7 +221,11 @@ package body Compiler.Lexer is
          -- instead, then read the rest of the line
          -- as a comment and update the token
          if Self.Token_Kind = Tokens.Comment then
-            Self.Get_Comment(Stream);
+            if Self.Comments_On then
+               Self.Get_Comment(Stream);  -- usually for testing the lexer
+            else
+               Self.Skip_Comment(Stream); -- Standard mode
+            end if;
          end if;
       elsif Self.Is_Running then
          Self.Error("Expected a valid token");
@@ -247,6 +256,16 @@ package body Compiler.Lexer is
       Self.Set_Token_Value(Get_Comment);
       Self.Set_Token_Last(Self.Column-1);
    end Get_Comment;
+
+   procedure Skip_Comment
+      (Self   : in out Instance; 
+       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
+   is begin
+      while Self.Is_Running and not Strings.Is_Newline(Self.Next_In) loop
+         Self.Get_Character(Stream);
+      end loop;
+      Self.Tokens.Delete_Last;  -- Remove the token since we aren't keeping comments
+   end Skip_Comment;
 
    procedure Get_Identifier
       (Self   : in out Instance; 

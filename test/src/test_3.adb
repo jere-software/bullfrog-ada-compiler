@@ -74,7 +74,7 @@ package body Test_3 is
    begin
       case Argument_Count is
          when 0 =>
-            null;
+            Help;
          when 1 =>
             Test_2.Tokenize_Directory(Lexer, Argument(1));
          when others =>
