@@ -147,7 +147,7 @@ begin
 
    -- Not an operator
    else
-      Self.Expected("Operator");
+      Self.Error("Operator expected");
    end if;
 
 end Get_Operator;

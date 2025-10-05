@@ -106,3 +106,7 @@ For any identifier that is not an attribute, the lexer tries to see if it is a k
 
 ## 5.2 Parser
 The parser generates an AST structure and provides to basic visitor interfaces to the AST structure, a "read-only" visitor and a "full access" visitor (with write permissions).  When a new node is added, it should implement the chaining logic used to connect to those two basic visitors (see existing for examples).  Various compiler stages can then be implemented using the visitor pattern.  One just need to implement each visitor operation for each node.
+
+For complex parsing situations where it's hard to tell which thing is coming next, a Mark/Release style interface is provided so that the parser can move forward, decide where it wants to go, then jump back to the decision point and call the correct operation.
+
+For parser layout, generous use of the `separate` keyword is used to organize various parsing duties to different source files.  The `Instance` type in `Compiler.Parser` will have various primitive operations for things like expressions, terms, and factors declared but in the body of `Compiler.Parser` one will find that they are implemented in operations found in various `separate` package bodies using the `renames` feature of Ada.

@@ -90,6 +90,9 @@ package Compiler.Lexer is
       return not null access constant Token_List
    with Inline;
 
+   -- Turn on the ability to save comments as tokens
+   procedure Enable_Comments(Self : in out Instance);
+
    -- Debug info on the last token found
    procedure Debug(Self : Instance);
 
@@ -122,6 +125,7 @@ private
       Column      : Positive           := 1;
       Next_Line   : Positive           := 1;
       Next_Column : Positive           := 1;
+      Comments_On : Boolean            := False;
    end record;
 
    -- Token insertion operations
@@ -144,6 +148,10 @@ private
 
    -- Top level scanning operations that generate tokens
    procedure Get_Comment -- Usually called after Get_Operator
+      (Self   : in out Instance; 
+       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
+      with Pre => Self.Token_Kind in Tokens.Comment;
+   procedure Skip_Comment -- Usually called after Get_Operator
       (Self   : in out Instance; 
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
       with Pre => Self.Token_Kind in Tokens.Comment;
@@ -181,9 +189,9 @@ private
    -- Low level output operations
    procedure Halt(Self : Instance; Message : String)
       with No_Return;
-   procedure Expected(Self : Instance; Message : String) 
+   procedure Error(Self : Instance; Message : String) 
       with Inline, No_Return;
-   procedure Expected(Self : Instance; Message : String; Line, Column : Positive)
+   procedure Error(Self : Instance; Message : String; Line, Column : Positive)
       with Inline, No_Return;
 
 end Compiler.Lexer;

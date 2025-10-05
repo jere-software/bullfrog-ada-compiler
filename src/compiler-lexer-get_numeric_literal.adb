@@ -36,7 +36,7 @@ is
       use Strings;
    begin
       if Self.Last_In in Period | Underscore | Pound | Plus | Minus then
-         Self.Expected("Previous character must be a digit.  Digit");
+         Self.Error("Previous character must be a digit");
       end if;
    end Check_Preceded_By_Digit;
 
@@ -71,51 +71,51 @@ is
                      end if;
                   when 1 => 
                      if Numeric_Value(Self.Next_in) >= Base then
-                        Self.Expected("Value outside of base range. Digit");
+                        Self.Error("Value outside of base range of digit");
                      end if;
                   when 2 => 
                      if not Exponent_Found then
-                        Self.Expected("Digit cannot be between '#' and 'E'.  Exponent");
+                        Self.Error("Digit cannot be between '#' and 'E'.  Exponent expected");
                      end if;
                end case;
             when Extended_Digit =>
                if Pound_Count /= 1 then
                   if Self.Next_in not in Exponent_Lower | Exponent_Upper then
-                     Self.Expected("Extended digit outside of #'s.  Digit");
+                     Self.Error("Extended digit outside of #'s if digit");
                   elsif Exponent_Found then
-                     Self.Expected("Too many exponents.  Digit");
+                     Self.Error("Too many exponents for digit");
                   elsif Pound_Count = 0 and Self.Last_In not in Digit then
-                     Self.Expected("Exponent must be preceded by a digit.  Digit");
+                     Self.Error("Exponent must be preceded by a digit");
                   elsif Pound_Count = 2 and Self.Last_In /= Pound then
-                     Self.Expected("Exponent must be preceded by '#'.  Exponent");
+                     Self.Error("Exponent must be preceded by '#'");
                   end if;
                   Exponent_Found := True;
                elsif Numeric_Value(Self.Next_in) >= Base then
-                  Self.Expected("Value outside of base range. Digit");
+                  Self.Error("Value outside of base range of digit");
                end if;
             when Underscore =>
                Check_Preceded_By_Digit;
             when Pound =>
                Check_Preceded_By_Digit;
                if Exponent_Found then
-                  Self.Expected("'#' cannot be in exponent field.  Digit");
+                  Self.Error("'#' cannot be in exponent field of digit");
                elsif Pound_Count = 0 then 
                   if Decimal_Found then
-                     Self.Expected("'#' cannot be after decimal.  Digit");
+                     Self.Error("'#' cannot be after decimal in digit");
                   end if;
                   case Digit_Count is
-                     when 0 => Self.Expected("Base must appear before '#'. Digit");
+                     when 0 => Self.Error("Base must appear before '#' in digit");
                      when 1 => Base := Numeric_Value(Base_Digits(1));
                      when 2 => Base := 
                         10 * Numeric_Value(Base_Digits(1))
                            + Numeric_Value(Base_Digits(2));
-                     when others => Self.Expected("'#' comes too late. Digit");
+                     when others => Self.Error("'#' comes too late in digit");
                   end case;
                   if Base not in 2 .. 16 then
-                     Self.Expected("Base value out of range.  2 .. 16", Line, First);
+                     Self.Error("Base value out of range 2 .. 16", Line, First);
                   end if;
                elsif Pound_Count = 2 then
-                  Self.Expected("Too many '#'.  Exponent");
+                  Self.Error("Too many '#'. Exponent expected");
                end if;
                Pound_Count := Pound_Count + 1;
             when Period =>
@@ -124,7 +124,7 @@ is
                   -- Make sure we are not in the middle of parsing
                   -- the significand for a based literal.
                   if Pound_Count = 1 then
-                     Self.Expected("Range cannot be in numeric literal.  Digit");
+                     Self.Error("Range cannot be in numeric literal");
                   end if;
                   Range_Found := True;
 
@@ -136,7 +136,7 @@ is
                   -- Make sure we are not in the middle of parsing
                   -- the significand for a based literal.
                   if Pound_Count = 1 then
-                     Self.Expected("Range cannot be in numeric literal.  Digit");
+                     Self.Error("'.' cannot appear immediately after '#' in digit");
                   end if;
                   return Result(1..Natural(Index)-1);
                end if;
@@ -147,13 +147,13 @@ is
                -- If exponent is already found, assume literal is finished
                if Exponent_Found then
                   if Self.Last_In in Exponent_Lower | Exponent_Upper then
-                     Self.Expected("Period cannot be in exponent.  Digit");
+                     Self.Error("Period cannot be in exponent of digit");
                   else
                      return Result(1..Natural(Index)-1);
                   end if;
                elsif Decimal_Found then
                   if Pound_Count = 1 then
-                     Self.Expected("Too many periods.  Digit");
+                     Self.Error("Too many periods in digit");
                   else
                      return Result(1..Natural(Index)-1);
                   end if;
@@ -163,28 +163,28 @@ is
                if Literal_Finished then
                   return Result(1..Natural(Index)-1);
                elsif not Exponent_Found then
-                  Self.Expected("'+' can only appear in exponent. 'E'");
+                  Self.Error("'+' can only appear in exponent. 'E' expected");
                elsif Self.Last_In not in Exponent_Lower | Exponent_Upper then
-                  Self.Expected("'+' must follow an 'E' or 'e'.  Digit");
+                  Self.Error("'+' must follow an 'E' or 'e' in digit");
                end if;
             when Minus =>
                if Literal_Finished then
                   return Result(1..Natural(Index)-1);
                elsif not Exponent_Found then
-                  Self.Expected("'-' can only appear in exponent. 'E'");
+                  Self.Error("'-' can only appear in exponent. 'E' expected");
                elsif not Decimal_Found then
-                  Self.Expected("Integer exponents cannot be negative.  Digit");
+                  Self.Error("Integer exponents cannot be negative");
                elsif Self.Last_In not in Exponent_Lower | Exponent_Upper then
-                  Self.Expected("- must follow an 'E' or 'e'.  Digit");
+                  Self.Error("- must follow an 'E' or 'e' in digit");
                end if;
             when others => 
                if Is_Alpha(Self.Next_In) then
-                  Self.Expected("End of numeric literal invalid.  Digit");
+                  Self.Error("End of numeric literal invalid");
                elsif not Literal_Finished then
                   if Pound_Count = 1 then
-                     Self.Expected("End of numeric literal invalid.  '#'");
+                     Self.Error("End of numeric literal invalid.  '#' expected");
                   else
-                     Self.Expected("End of numeric literal invalid.  Digit");
+                     Self.Error("End of numeric literal invalid");
                   end if;
                end if;
                return Result(1..Natural(Index)-1);

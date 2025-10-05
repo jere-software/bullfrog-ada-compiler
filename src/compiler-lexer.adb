@@ -109,6 +109,11 @@ package body Compiler.Lexer is
 
    end Run;
 
+   procedure Enable_Comments(Self : in out Instance) is
+   begin
+      Self.Comments_On := True;
+   end Enable_Comments;
+
    function Is_Running(Self : Instance) return Boolean is
       (Self.State /= Idle);
 
@@ -216,10 +221,14 @@ package body Compiler.Lexer is
          -- instead, then read the rest of the line
          -- as a comment and update the token
          if Self.Token_Kind = Tokens.Comment then
-            Self.Get_Comment(Stream);
+            if Self.Comments_On then
+               Self.Get_Comment(Stream);  -- usually for testing the lexer
+            else
+               Self.Skip_Comment(Stream); -- Standard mode
+            end if;
          end if;
       elsif Self.Is_Running then
-         Self.Expected("A valid token");
+         Self.Error("Expected a valid token");
       end if;
 
    end Get_Token;
@@ -248,6 +257,16 @@ package body Compiler.Lexer is
       Self.Set_Token_Last(Self.Column-1);
    end Get_Comment;
 
+   procedure Skip_Comment
+      (Self   : in out Instance; 
+       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
+   is begin
+      while Self.Is_Running and not Strings.Is_Newline(Self.Next_In) loop
+         Self.Get_Character(Stream);
+      end loop;
+      Self.Tokens.Delete_Last;  -- Remove the token since we aren't keeping comments
+   end Skip_Comment;
+
    procedure Get_Identifier
       (Self   : in out Instance; 
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
@@ -267,14 +286,14 @@ package body Compiler.Lexer is
                if          Self.Next_In = Strings.Underscore 
                   and then Self.Last_In = Self.Next_In 
                then
-                  Self.Expected("Double underscore found, single underscore");
+                  Self.Error("Double underscore found, single underscore expected");
                end if;
                Temp(Index) := Self.Next_In;
                Last := Self.Column;
                Self.Get_Character(Stream);
             else
                if Self.Last_In = Strings.Underscore then
-                  Self.Expected("Name ends in underscore, alphanumeric");
+                  Self.Error("Name ends in underscore, alphanumeric expected");
                end if;
                return Temp(1..Index-1);
             end if;
@@ -330,14 +349,14 @@ package body Compiler.Lexer is
       
       Self.Get_Character(Stream); -- Munch apostrophe
       if not Strings.Is_Graphic(Self.Next_In) then
-         Self.Expected("Non graphic character found.  Character literal");
+         Self.Error("Non graphic character found.  Character literal expected");
       end if;
 
       Temp := Self.Next_In;
 
       Self.Get_Character(Stream);
       if Self.Next_In /= Strings.Apostrophe then
-         Self.Expected("Closing apostrophe not found.  Character literal");
+         Self.Error("Closing apostrophe not found.  Character literal expected");
       end if;
 
       Self.Add_Token
@@ -407,7 +426,7 @@ package body Compiler.Lexer is
          end loop;
 
          if not Quote_Found then
-            Self.Expected("Closing quotation not found.  String literal");
+            Self.Error("Closing quotation not found.  String literal expected");
          end if;
 
          return Result(1..Natural(Index)-1);
@@ -436,20 +455,18 @@ package body Compiler.Lexer is
       raise Lexical_Error with Message;
    end Halt;
 
-   procedure Expected(Self : Instance; Message : String) is
+   procedure Error(Self : Instance; Message : String) is
    begin
-      Self.Expected(Message, Self.Line, Self.Column);
-   end Expected;
+      Self.Error(Message, Self.Line, Self.Column);
+   end Error;
 
-   procedure Expected(Self : Instance; Message : String; Line, Column : Positive) is
+   procedure Error(Self : Instance; Message : String; Line, Column : Positive) is
    begin
       Self.Halt
-         (Message 
-          & " expected at " 
-          & Strings.Image(Line) 
-          & ":"
-          & Strings.Image(Column));
-   end Expected;
+         ("Lexical Error @ "
+          & Strings.Image(Line) & ":" & Strings.Image(Column)
+          & " => " & Message);
+   end Error;
 
    procedure Debug(Self : Instance) is
       use Strings.Text_IO;

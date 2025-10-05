@@ -1,4 +1,4 @@
--- Copyright (C) 2024
+-- Copyright (C) 2024 - 2025
 -- Jeremiah Breeden
 --
 -- This Source Code Form is subject to the terms of the Mozilla Public
@@ -24,9 +24,10 @@ package body Compiler.Parser is
       Self.Last    := 1;
       Self.Running := Self.Lexer.All_Tokens.Length not in 0;
 
-      null; -- TODO: main loop;
-
-      return Result : AST.Tree;
+      return Result : AST.Tree := (Root => AST.Make(Self.Expression)) do
+         Strings.Text_IO.Put_Line("Last Token Parsed is " & Self.Token_Kind'Image
+            & " => " & Self.Token_Value);
+      end return;
    end Run;
 
    function Run(Self : in out Instance; Filename : Standard.String) return AST.Tree is
@@ -65,6 +66,11 @@ package body Compiler.Parser is
    function Token_Value(Self : Instance) return Strings.String
       is (Self.Token_Value(Self.Last));
 
+   function Token(Self : Instance; Index : Positive) return Lexer_Token
+      is (Self.Lexer.All_Tokens.all(Index));
+   function Token(Self : Instance) return Lexer_Token
+      is (Self.Token(Self.Last));
+
    ------------------------------------------------------
    ------------ Low Level Parsing Operations ------------
    ------------------------------------------------------
@@ -74,12 +80,38 @@ package body Compiler.Parser is
       Self.Last := Self.Next;
       if Self.Next < Self.Lexer.All_Tokens.Last_Index then
          Self.Next := Self.Next + 1;
-      else
+      elsif Self.Running then
          Self.Running := False;
+      else
+         Self.Error
+            (Message => "Premature end of File",
+             Line    => Self.Token.Line,
+             Column  => Self.Token.Last + 1);
       end if;
    end Scan;
 
-   function Token_Image(Token : Compiler.Lexer.Token) return Strings.String is
+   function Mark(Self : Instance) return Positive is (Self.Last);
+
+   procedure Release(Self : in out Instance; Mark : Positive) is
+      Last : constant Positive := Self.Lexer.All_Tokens.Last_Index;
+   begin
+      -- If the supplied mark is not the last, then
+      -- Set Last as Mark, and Next as the following
+      -- position
+      if Mark < Last then
+         Self.Last := Mark;
+         Self.Next := Mark + 1;
+      
+      -- Otherwise, set both the last index.  This
+      -- bounds the values in the same way that the
+      -- Scan operation does.
+      else
+         Self.Last := Last;
+         Self.Next := Last;
+      end if;
+   end Release;
+
+   function Token_Image(Token : Lexer_Token) return Strings.String is
       (if Token.Kind in Tokens.Identifier 
                       | Tokens.Attribute 
                       | Tokens.Pragma_ID 
@@ -88,17 +120,17 @@ package body Compiler.Parser is
        else
          Token.Kind'Image);
 
-   function Current_Token_Image(Self  : Instance) return Strings.String is
-      (if not Self.Is_Running then
-         "End of File"
+   function Next_Token_Image(Self  : Instance) return Strings.String is
+      (if Self.Is_Running then
+         Token_Image(Self.Lexer.All_Tokens.all(Self.Next))
        else
-         Token_Image(Self.Lexer.All_Tokens.all(Self.Next)));
+         "End of File");
 
    function Token_Error_Image
       (Self  : Instance;
        Token : Tokens.Token_Kind)
        return Strings.String 
-   is ("Expected " & Token'Image & " but found " & Current_Token_Image(Self));
+   is ("Expected " & Token'Image & " but found " & Next_Token_Image(Self));
 
    function Identifier_Error_Image
       (Self       : Instance;
@@ -106,7 +138,7 @@ package body Compiler.Parser is
        return Strings.String
    is ("Expected " & Tokens.Identifier'Image 
        & "(" & Identifier & ") but found " 
-       & Current_Token_Image(Self));
+       & Token_Image(Self.Token));
 
    function Peek(Self : Instance) return Tokens.Token_Kind is
       (Self.Lexer.All_Tokens.all(Self.Next).Kind);
@@ -126,7 +158,19 @@ package body Compiler.Parser is
        Token :        Tokens.Token_Kind) 
    is begin
       if not Self.Match(Token) then
-         Self.Error(Token_Error_Image(Self, Token));
+         declare
+            -- Generate error message before advancing
+            Message : constant String := Token_Error_Image(Self, Token);
+         begin
+            -- If there are tokens still left, set error message
+            -- to the next token location, otherwise make it +1
+            -- more than the current token (for EoF)
+            if Self.Is_Running then
+               Self.Error(Message, Self.Eat_Next);
+            else
+               Self.Error(Message, Self.Token.Line, Self.Token.Last + 1);
+            end if;
+         end;
       end if;
    end Match;
 
@@ -148,8 +192,14 @@ package body Compiler.Parser is
       if Self.Is_Running then
          Self.Scan;
       else
-         Self.Error("Expected a token");
+         Self.Error("Expected a token", Self.Token.Line, Self.Token.Last + 1);
       end if;
+   end Eat_Next;
+
+   function Eat_Next(Self : in out Instance) return Lexer_Token is
+   begin
+      Self.Eat_Next;
+      return Self.Token;
    end Eat_Next;
 
    ------------------------------------------------------
@@ -254,16 +304,14 @@ package body Compiler.Parser is
    end Halt;
 
    procedure Error(Self : Instance; Message : String) is
-      Token : Compiler.Lexer.Token 
-         renames Self.Lexer.All_Tokens.all(Self.Last);
    begin
-      Self.Error(Message, Token.Line, Token.First);
+      Self.Error(Message, Self.Token);
    end Error;
 
    procedure Error
       (Self    : Instance; 
        Message : String;
-       Token   : Compiler.Lexer.Token)
+       Token   : Lexer_Token)
    is begin
       Self.Error(Message, Token.Line, Token.First);
    end Error;
@@ -275,5 +323,34 @@ package body Compiler.Parser is
           & Strings.Image(Line) & ":" & Strings.Image(Column)
           & " => " & Message);
    end Error;
+
+   ------------------------------------------------------
+   ------------- Syntax Parsing Operations --------------
+   ------------------------------------------------------
+
+   -- Expression parsing
+   package Expressions is
+      function Expression(Self : in out Instance) return AST.Node'Class;
+      function Relation(Self : in out Instance) return AST.Node'Class;
+      function Simple_Expression(Self : in out Instance) return AST.Node'Class;
+      function Term(Self : in out Instance) return AST.Node'Class;
+      function Factor(Self : in out Instance) return AST.Node'Class;
+      function Primary(Self : in out Instance) return AST.Node'Class;
+      function Membership(Self : in out Instance) return AST.Node_List;
+      function Membership_Choice(Self : in out Instance) return AST.Node'Class;
+      function Raise_Expression(Self : in out Instance) return AST.Node'Class;
+   end Expressions;  
+
+   package body Expressions is separate;
+
+   function Expression(Self : in out Instance) return AST.Node'Class renames Expressions.Expression;
+   function Relation(Self : in out Instance) return AST.Node'Class renames Expressions.Relation;
+   function Simple_Expression(Self : in out Instance) return AST.Node'Class renames Expressions.Simple_Expression;
+   function Term(Self : in out Instance) return AST.Node'Class renames Expressions.Term;
+   function Factor(Self : in out Instance) return AST.Node'Class renames Expressions.Factor;
+   function Primary(Self : in out Instance) return AST.Node'Class renames Expressions.Primary;
+   function Membership(Self : in out Instance) return AST.Node_List renames Expressions.Membership;
+   function Membership_Choice(Self : in out Instance) return AST.Node'Class renames Expressions.Membership_Choice;
+   function Raise_Expression(Self : in out Instance) return AST.Node'Class renames Expressions.Raise_Expression;
 
 end Compiler.Parser;

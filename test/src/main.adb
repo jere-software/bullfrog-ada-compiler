@@ -5,8 +5,9 @@ with Test_3;
 
 -- Program entry point
 procedure Main is
-   Lexer : Test_1.Lexer;
+   Lexer : Test_3.Lexer;
 begin
+   Lexer.Enable_Comments;
    Ada.Text_IO.Put_Line("---------------Starting Tests---------------");
    --Test_1.Tokenize_Directory(Lexer, "./src");
    --Test_1.Tokenize_Directory(Lexer, "../src");
