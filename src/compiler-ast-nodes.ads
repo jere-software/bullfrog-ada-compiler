@@ -29,11 +29,11 @@ package Compiler.AST.Nodes is
    overriding procedure Visit(Self : in out Name; Visitor : in out Visitors.Full_Access'Class) with Inline;
 
    -- `null` keyword
-   type Null_Statement is new Node with null record;
+   type Null_Expression is new Node with null record;
 
    -- Overrides for the abstract node base class
-   overriding procedure Visit(Self :        Null_Statement; Visitor : in out Visitors.Read_Only'Class)   with Inline;
-   overriding procedure Visit(Self : in out Null_Statement; Visitor : in out Visitors.Full_Access'Class) with Inline;
+   overriding procedure Visit(Self :        Null_Expression; Visitor : in out Visitors.Read_Only'Class)   with Inline;
+   overriding procedure Visit(Self : in out Null_Expression; Visitor : in out Visitors.Full_Access'Class) with Inline;
 
    -- One argument operations keyword
    type Unary_Operation is new Node with record
@@ -53,5 +53,35 @@ package Compiler.AST.Nodes is
    -- Overrides for the abstract node base class
    overriding procedure Visit(Self :        Binary_Operation; Visitor : in out Visitors.Read_Only'Class)   with Inline;
    overriding procedure Visit(Self : in out Binary_Operation; Visitor : in out Visitors.Full_Access'Class) with Inline;
+
+   -- Membership checks
+   type Membership is new Node with record
+      Negate  : Boolean := False;
+      Source  : Any_Node;
+      Targets : Node_List;
+   end record;
+
+   -- Overrides for the abstract node base class
+   overriding procedure Visit(Self :        Membership; Visitor : in out Visitors.Read_Only'Class)   with Inline;
+   overriding procedure Visit(Self : in out Membership; Visitor : in out Visitors.Full_Access'Class) with Inline;
+
+   -- Ranges specified by expression .. expression
+   type Simple_Range is new Node with record
+      Left, Right : Any_Node;
+   end record;
+
+   -- Overrides for the abstract node base class
+   overriding procedure Visit(Self :        Simple_Range; Visitor : in out Visitors.Read_Only'Class)   with Inline;
+   overriding procedure Visit(Self : in out Simple_Range; Visitor : in out Visitors.Full_Access'Class) with Inline;
+
+   -- Exception raise expression
+   type Raise_Expression is new Node with record
+      Name       : Nodes.Name;
+      Expression : Any_Node;
+   end record;
+
+   -- Overrides for the abstract node base class
+   overriding procedure Visit(Self :        Raise_Expression; Visitor : in out Visitors.Read_Only'Class)   with Inline;
+   overriding procedure Visit(Self : in out Raise_Expression; Visitor : in out Visitors.Full_Access'Class) with Inline;
 
 end Compiler.AST.Nodes;

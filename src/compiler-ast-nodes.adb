@@ -40,14 +40,14 @@ package body Compiler.AST.Nodes is
    end Visit;
 
    procedure Visit
-      (Self    :        Null_Statement; 
+      (Self    :        Null_Expression; 
        Visitor : in out Visitors.Read_Only'Class)
    is begin
       Visitor.Visit(Self);
    end Visit;
 
    procedure Visit
-      (Self    : in out Null_Statement; 
+      (Self    : in out Null_Expression; 
        Visitor : in out Visitors.Full_Access'Class)
    is begin
       Visitor.Visit(Self);
@@ -76,6 +76,48 @@ package body Compiler.AST.Nodes is
 
    procedure Visit
       (Self    : in out Binary_Operation; 
+       Visitor : in out Visitors.Full_Access'Class)
+   is begin
+      Visitor.Visit(Self);
+   end Visit;
+
+   procedure Visit
+      (Self    :        Membership; 
+       Visitor : in out Visitors.Read_Only'Class)
+   is begin
+      Visitor.Visit(Self);
+   end Visit;
+
+   procedure Visit
+      (Self    : in out Membership; 
+       Visitor : in out Visitors.Full_Access'Class)
+   is begin
+      Visitor.Visit(Self);
+   end Visit;
+
+   procedure Visit
+      (Self    :        Simple_Range; 
+       Visitor : in out Visitors.Read_Only'Class)
+   is begin
+      Visitor.Visit(Self);
+   end Visit;
+
+   procedure Visit
+      (Self    : in out Simple_Range; 
+       Visitor : in out Visitors.Full_Access'Class)
+   is begin
+      Visitor.Visit(Self);
+   end Visit;
+
+   procedure Visit
+      (Self    :        Raise_Expression; 
+       Visitor : in out Visitors.Read_Only'Class)
+   is begin
+      Visitor.Visit(Self);
+   end Visit;
+
+   procedure Visit
+      (Self    : in out Raise_Expression; 
        Visitor : in out Visitors.Full_Access'Class)
    is begin
       Visitor.Visit(Self);

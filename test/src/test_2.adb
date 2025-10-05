@@ -85,7 +85,7 @@ package body Test_2 is
       end loop;
       Close(File);
 
-      System("diff -iw " & Filename  
+      System("diff -iwB " & Filename  
          & " "   & Output_Filename 
          & " > " & Output_Filename & ".diff");
 

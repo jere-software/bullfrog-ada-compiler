@@ -23,11 +23,17 @@ package Compiler.AST.Visitors is
    procedure Visit(Visitor : in out Full_Access; Node : in out Nodes.Literal) is abstract;
    procedure Visit(Visitor : in out Read_Only;   Node :        Nodes.Name) is abstract;
    procedure Visit(Visitor : in out Full_Access; Node : in out Nodes.Name) is abstract;
-   procedure Visit(Visitor : in out Read_Only;   Node :        Nodes.Null_Statement) is abstract;
-   procedure Visit(Visitor : in out Full_Access; Node : in out Nodes.Null_Statement) is abstract;
+   procedure Visit(Visitor : in out Read_Only;   Node :        Nodes.Null_Expression) is abstract;
+   procedure Visit(Visitor : in out Full_Access; Node : in out Nodes.Null_Expression) is abstract;
    procedure Visit(Visitor : in out Read_Only;   Node :        Nodes.Unary_Operation) is abstract;
    procedure Visit(Visitor : in out Full_Access; Node : in out Nodes.Unary_Operation) is abstract;
    procedure Visit(Visitor : in out Read_Only;   Node :        Nodes.Binary_Operation) is abstract;
    procedure Visit(Visitor : in out Full_Access; Node : in out Nodes.Binary_Operation) is abstract;
+   procedure Visit(Visitor : in out Read_Only;   Node :        Nodes.Membership) is abstract;
+   procedure Visit(Visitor : in out Full_Access; Node : in out Nodes.Membership) is abstract;
+   procedure Visit(Visitor : in out Read_Only;   Node :        Nodes.Simple_Range) is abstract;
+   procedure Visit(Visitor : in out Full_Access; Node : in out Nodes.Simple_Range) is abstract;
+   procedure Visit(Visitor : in out Read_Only;   Node :        Nodes.Raise_Expression) is abstract;
+   procedure Visit(Visitor : in out Full_Access; Node : in out Nodes.Raise_Expression) is abstract;
 
 end Compiler.AST.Visitors;

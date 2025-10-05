@@ -149,5 +149,8 @@ private
    function Term(Self : in out Instance) return AST.Node'Class;
    function Factor(Self : in out Instance) return AST.Node'Class;
    function Primary(Self : in out Instance) return AST.Node'Class;
+   function Membership(Self : in out Instance) return AST.Node_List;
+   function Membership_Choice(Self : in out Instance) return AST.Node'Class;
+   function Raise_Expression(Self : in out Instance) return AST.Node'Class;
 
 end Compiler.Parser;

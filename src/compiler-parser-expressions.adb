@@ -114,12 +114,9 @@ package body Expressions is
    function Relation(Self : in out Instance) return AST.Node'Class is 
    begin
       -- Search for easy to parse relations first
-      case Self.Peek is
-         when Tokens.Keyword_Raise => Self.Eat_Next; Self.Error("Raise expression not supported yet");
-         when Tokens.Keyword_Not   => Self.Eat_Next; Self.Error("Membership test not supported yet");
-         when Tokens.Keyword_In    => Self.Eat_Next; Self.Error("Membership test not supported yet");
-         when others => null;
-      end case;
+      if Self.Match(Tokens.Keyword_Raise) then
+         return Self.Raise_Expression;
+      end if;
 
       -- Otherwise grab the first simple expression
       declare
@@ -140,6 +137,23 @@ package body Expressions is
                    Left          => Make(Result),
                    Right         => Make(Self.Simple_Expression),
                    Short_Circuit => False);
+
+            when Tokens.Keyword_Not   =>
+               Self.Eat_Next;
+               Self.Match(Tokens.Keyword_In);
+               return Nodes.Membership'
+                  (Token   => Self.Token,
+                   Negate  => True,
+                   Source  => Make(Result),
+                   Targets => Self.Membership);
+
+            when Tokens.Keyword_In => 
+               Self.Eat_Next;
+               return Nodes.Membership'
+                  (Token   => Self.Token,
+                   Negate  => False,
+                   Source  => Make(Result),
+                   Targets => Self.Membership);
 
             -- If no relational operator, then just return the 
             -- parsed expression
@@ -263,10 +277,7 @@ package body Expressions is
 
       -- Look at possible primary options
       case Self.Peek is
-         when Tokens.Identifier => 
-            return Nodes.Name'(Token => Self.Eat_Next);
-         when Tokens.Character_Literal
-            | Tokens.String_Literal 
+         when Tokens.String_Literal 
             | Tokens.Real_Literal
             | Tokens.Integer_Literal
          =>
@@ -278,7 +289,11 @@ package body Expressions is
                Self.Match(Tokens.Operator_Close_Parenthesis);
             end return;
          when Tokens.Keyword_Null =>
-            return Nodes.Null_Statement'(Token => Self.Eat_Next);
+            return Nodes.Null_Expression'(Token => Self.Eat_Next);
+         when Tokens.Character_Literal
+            | Tokens.Identifier
+         => 
+            return Nodes.Name'(Token => Self.Eat_Next);
          when others => null;
       end case;
 
@@ -295,5 +310,58 @@ package body Expressions is
       end case;
 
    end Primary;
+
+   -- membership_choice_list ::= membership_choice {'|' membership_choice}
+   function Membership(Self : in out Instance) return AST.Node_List is
+   begin
+      return Result : Node_List do 
+         Result.Append(Self.Membership_Choice);
+         while Self.Match(Tokens.Operator_Membership) loop
+            Result.Append(Self.Membership_Choice);
+         end loop;
+      end return;
+   end Membership;
+
+   -- membership_choice ::= choice_simple_expression | range | subtype_mark
+   -- subtype_mark ::= subtype_name
+   -- range ::=  
+   --   range_attribute_reference
+   -- | simple_expression .. simple_expression
+   function Membership_Choice(Self : in out Instance) return AST.Node'Class is
+      Result : constant Node'Class := Self.Expression;
+   begin
+      if Self.Match(Tokens.Operator_Range) then
+         return Nodes.Simple_Range'
+            (Token => Self.Token,
+             Left  => Make(Result),
+             Right => Make(Self.Expression));
+      else
+         return Result;
+      end if;
+   end Membership_Choice;
+
+   -- raise_expression ::= raise exception_name [with string_simple_expression]
+   function Raise_Expression(Self : in out Instance) return AST.Node'Class is
+      Token : Lexer_Token;
+   begin
+      Self.Match(Tokens.Keyword_Raise);
+      Token := Self.Token;
+      
+      return Result : Nodes.Raise_Expression :=
+         (Token  => Token,
+          Name   => AST.Nodes.Name(Self.Expression),
+          others => <>)
+      do 
+         if Self.Match(Tokens.Keyword_With) then
+            Result.Expression := Make(Self.Expression);
+         end if;
+      end return;
+   exception
+      when Parsing_Error => raise;
+      when others => Self.Error
+         (Message => "Name expected for raise expression",
+          Line    => Token.Line,
+          Column  => Token.Last + 1);
+   end Raise_Expression;
    
 end Expressions;
