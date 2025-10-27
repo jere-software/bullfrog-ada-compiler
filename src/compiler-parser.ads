@@ -38,7 +38,12 @@ package Compiler.Parser is
 private
 
    -- Local type rename
-   subtype Lexer_Token is Compiler.Lexer.Token;
+   subtype Lexer_Token   is Compiler.Lexer.Token;
+   subtype Line_Number   is Compiler.Lexer.Line_Number;
+   subtype Column_Number is Compiler.Lexer.Column_Number;
+
+   use all type Line_Number;
+   use all type Column_Number;
 
    type Instance is tagged limited record
       Lexer   : aliased Compiler.Lexer.Instance;
@@ -139,8 +144,11 @@ private
       with Inline, No_Return;
    procedure Error(Self : Instance; Message : String; Token : Lexer_Token)
       with Inline, No_Return;
-   procedure Error(Self : Instance; Message : String; Line, Column : Positive)
-      with Inline, No_Return;
+   procedure Error
+      (Self    : Instance; 
+       Message : String; 
+       Line    : Line_Number; 
+       Column  : Column_Number) with Inline, No_Return;
 
    -- Expression parsing
    function Expression(Self : in out Instance) return AST.Node'Class;

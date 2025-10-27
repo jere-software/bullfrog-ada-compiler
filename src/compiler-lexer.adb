@@ -36,9 +36,9 @@ package body Compiler.Lexer is
       (Self  : in out Instance; 
        Kind  : Tokens.Token_Kind;
        Value : String;
-       Line  : Positive;
-       First : Positive;
-       Last  : Positive) 
+       Line  : Line_Number;
+       First : Column_Number;
+       Last  : Column_Number) 
    is begin
       Self.Tokens.Append(Token'
          (Kind  => Kind,
@@ -53,7 +53,7 @@ package body Compiler.Lexer is
       Self.Tokens(Self.Tokens.Last_Index).Value.Set(Value);
    end Set_Token_Value;
 
-   procedure Set_Token_Last(Self : in out Instance; Value : Positive) is
+   procedure Set_Token_Last(Self : in out Instance; Value : Column_Number) is
    begin
       Self.Tokens(Self.Tokens.Last_Index).Last := Value;
    end Set_Token_Last;
@@ -62,11 +62,11 @@ package body Compiler.Lexer is
       (Self.Tokens(Self.Tokens.Last_Index).Kind);
    function Token_Value(Self : Instance) return Strings.String is
       (Self.Tokens(Self.Tokens.Last_Index).Value.Get);
-   function Token_Line(Self : Instance) return Positive is
+   function Token_Line(Self : Instance) return Line_Number is
       (Self.Tokens(Self.Tokens.Last_Index).Line);
-   function Token_First(Self : Instance) return Positive is
+   function Token_First(Self : Instance) return Column_Number is
       (Self.Tokens(Self.Tokens.Last_Index).First);
-   function Token_Last(Self : Instance) return Positive is
+   function Token_Last(Self : Instance) return Column_Number is
       (Self.Tokens(Self.Tokens.Last_Index).Last);
 
    function All_Tokens(Self : aliased Instance) 
@@ -115,7 +115,10 @@ package body Compiler.Lexer is
    end Enable_Comments;
 
    function Is_Running(Self : Instance) return Boolean is
-      (Self.State /= Idle);
+      (Self.State /= Off);
+
+   function Not_Running(Self : Instance) return Boolean is
+      (Self.State = Off);
 
    procedure Initialize(Self : in out Instance) is
    begin
@@ -128,6 +131,64 @@ package body Compiler.Lexer is
       Self.Next_Column := 1;
       Self.State       := Running;
    end Initialize;
+
+   procedure Advance
+      (Self   : in out Instance;
+       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
+   is 
+      use Strings;
+
+      -- Determine Next_Line should be incremented
+      function Is_Newline return Boolean is
+         (Is_Newline(Self.Next)
+          and then    (Self.Next /= Carriage_Return
+               or else Self.Peek /= New_Line)) with Inline;
+
+      -- Attempts to read the next character from a stream
+      function Read(Item : out Character) return Boolean is
+      begin
+         Character'Read(Stream, Item);
+         return False;
+      exception
+         when others => return False;
+      end Read;
+
+   begin
+
+      -- Update "Next" parameters
+      Self.Next    := Self.Peek;
+      Self.Line    := Self.Next_Line;
+      Self.Column  := Self.Next_Column;
+
+      case Self.State is
+         when Off =>
+            Self.Error("Unexpected end of file");
+         when Running =>
+            if not Read(Self.Peek) then
+               Self.Peek  := Space;
+               Self.State := End_Of_File;
+            end if;
+         when End_Of_File =>
+            Self.State := Off;
+      end case;
+
+      -- Calculate next line and column
+      if Is_Newline then
+         Self.Next_Line   := @ + 1;
+         Self.Next_Column := 1;
+      else
+         Self.Next_Column := @ + 1;
+      end if;
+
+   exception
+      -- Should only get constraint error from calculations
+      when Constraint_Error =>
+         if Is_Newline then
+            Self.Error("Too many lines in file, unable to tokenize");
+         else 
+            Self.Error("Too many columns in line, unable to tokenize");
+         end if;
+   end Advance;
 
    procedure Get_Character
       (Self   : in out Instance; 
@@ -157,9 +218,9 @@ package body Compiler.Lexer is
    exception
       when others => 
          case Self.State is
-            when Idle => raise;
+            when Off => raise;
             when others => 
-               Self.State   := Idle;
+               Self.State   := Off;
                Self.Next_In := Strings.Space;
                --Self.Debug;
          end case;
@@ -274,9 +335,9 @@ package body Compiler.Lexer is
 
       use Strings;
 
-      Line  : constant Positive := Self.Line;
-      First : constant Positive := Self.Column;
-      Last  :          Positive := Self.Column;
+      Line  : constant Line_Number   := Self.Line;
+      First : constant Column_Number := Self.Column;
+      Last  :          Column_Number := Self.Column;
 
       function Get_Identifier return String is
          Temp : String(1..Default_String_Length);
@@ -344,7 +405,7 @@ package body Compiler.Lexer is
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
    is 
       Temp : Character;
-      First : constant Positive := Self.Column;
+      First : constant Column_Number := Self.Column;
    begin
       
       Self.Get_Character(Stream); -- Munch apostrophe
@@ -375,7 +436,7 @@ package body Compiler.Lexer is
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
    is
 
-      First : constant Positive := Self.Column;
+      First : constant Column_Number := Self.Column;
 
       Quote_Found : Boolean := False;
 
@@ -460,11 +521,15 @@ package body Compiler.Lexer is
       Self.Error(Message, Self.Line, Self.Column);
    end Error;
 
-   procedure Error(Self : Instance; Message : String; Line, Column : Positive) is
-   begin
+   procedure Error
+      (Self    : Instance; 
+       Message : String; 
+       Line    : Line_Number; 
+       Column  : Column_Number)
+   is begin
       Self.Halt
          ("Lexical Error @ "
-          & Strings.Image(Line) & ":" & Strings.Image(Column)
+          & Image(Line) & ":" & Image(Column)
           & " => " & Message);
    end Error;
 

@@ -100,8 +100,8 @@ is
 
    Result : String(1..2);
    Temp  : Character;
-   Line  : constant Positive := Self.Line;
-   First : constant Positive := Self.Column;
+   Line  : constant Line_Number   := Self.Line;
+   First : constant Column_Number := Self.Column;
    Kind  : Tokens.Token_Kind;
 begin
 

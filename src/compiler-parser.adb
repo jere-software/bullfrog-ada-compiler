@@ -232,9 +232,9 @@ package body Compiler.Parser is
    is 
       use Aspects;
       ID : Aspects.Aspect_Identifier;
-      Line   : constant Positive 
+      Line   : constant Line_Number 
          := Self.Lexer.All_Tokens.all(Self.Next).Line;
-      Column : constant Positive 
+      Column : constant Column_Number 
          := Self.Lexer.All_Tokens.all(Self.Next).First;
    begin
 
@@ -316,11 +316,15 @@ package body Compiler.Parser is
       Self.Error(Message, Token.Line, Token.First);
    end Error;
 
-   procedure Error(Self : Instance; Message : String; Line, Column : Positive) is
-   begin
+   procedure Error
+      (Self    : Instance; 
+       Message : String; 
+       Line    : Line_Number; 
+       Column  : Column_Number)
+   is begin
       Self.Halt
          ("Parsing Error @ " 
-          & Strings.Image(Line) & ":" & Strings.Image(Column)
+          & Image(Line) & ":" & Image(Column)
           & " => " & Message);
    end Error;
 

@@ -19,14 +19,24 @@ package Compiler.Lexer is
    ----------------- Token Information ------------------
    ------------------------------------------------------
 
+   -- Specialized numeric types for token information
+   type Line_Number is new Positive;
+   type Column_Number is new Positive;
+
+   -- Image functions
+   function Image(Item : Line_Number) return String is
+      (Strings.Image(Integer(Item))) with Inline;
+   function Image(Item : Column_Number) return String is
+      (Strings.Image(Integer(Item))) with Inline;
+
    -- Core Token type
    type Token
       (Kind  : Tokens.Token_Kind := Tokens.Comment) 
    is record
       Value  : Strings.Holder := Strings.Empty_Holder;
-      Line   : Positive       := 1;
-      First  : Positive       := 1;
-      Last   : Positive       := 1;
+      Line   : Line_Number    := 1;
+      First  : Column_Number  := 1;
+      Last   : Column_Number  := 1;
    end record;
 
    -- Prints the information for the supplied token to STDOUT
@@ -63,6 +73,7 @@ package Compiler.Lexer is
    -- Get_Token to iterate through tokens
    procedure Initialize(Self : in out Instance); -- Resets lexer state
    function Is_Running(Self : Instance) return Boolean with Inline;
+   function Not_Running(Self : Instance) return Boolean with Inline;
    procedure Get_Token
       (Self   : in out Instance; 
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
@@ -75,13 +86,13 @@ package Compiler.Lexer is
    function Token_Value(Self : Instance) return Strings.String
       with  Inline, 
             Pre => Self.All_Tokens.Length not in 0;
-   function Token_Line(Self : Instance) return Positive
+   function Token_Line(Self : Instance) return Line_Number
       with  Inline, 
             Pre => Self.All_Tokens.Length not in 0;
-   function Token_First(Self : Instance) return Positive
+   function Token_First(Self : Instance) return Column_Number
       with  Inline, 
             Pre => Self.All_Tokens.Length not in 0;
-   function Token_Last(Self : Instance) return Positive
+   function Token_Last(Self : Instance) return Column_Number
       with  Inline, 
             Pre => Self.All_Tokens.Length not in 0;
 
@@ -113,18 +124,21 @@ private
 
    -- Lexer state type
    type Status is 
-      (Idle, 
-       Running);
+      (Off,          -- Finished
+       Running,      -- Looking for characters
+       End_Of_File); -- Last character found
 
    type Instance is new Ada.Finalization.Limited_Controlled with record
+      Next        : Character          := Strings.Space;  -- Next character to process
+      Peek        : Character          := Strings.Space;  -- Future character to process
       Next_In     : Character          := Strings.Space;  -- Next character to process
       Last_In     : Character          := Strings.Space;  -- Last character processed
-      State       : Lexer.Status       := Idle;
+      State       : Lexer.Status       := Off;
       Tokens      : aliased Token_List := Empty_Token_List;
-      Line        : Positive           := 1;
-      Column      : Positive           := 1;
-      Next_Line   : Positive           := 1;
-      Next_Column : Positive           := 1;
+      Line        : Line_Number        := 1;
+      Column      : Column_Number      := 1;
+      Next_Line   : Line_Number        := 1;
+      Next_Column : Column_Number      := 1;
       Comments_On : Boolean            := False;
    end record;
 
@@ -133,16 +147,16 @@ private
       (Self  : in out Instance; 
        Kind  : Tokens.Token_Kind;
        Value : String;
-       Line  : Positive;
-       First : Positive;
-       Last  : Positive)
+       Line  : Line_Number;
+       First : Column_Number;
+       Last  : Column_Number)
    with Inline;
    
    -- Last token update operations
    procedure Set_Token_Value(Self : in out Instance; Value : String)
       with Inline,
          Pre => Self.Tokens.Length not in 0;
-   procedure Set_Token_Last(Self : in out Instance; Value : Positive)
+   procedure Set_Token_Last(Self : in out Instance; Value : Column_Number)
       with Inline,
          Pre => Self.Tokens.Length not in 0;
 
@@ -177,6 +191,9 @@ private
       with Pre => Self.Next_In in Strings.Quote;
 
    -- Low level input operations
+   procedure Advance
+      (Self   : in out Instance;
+       Stream : not null access Ada.Streams.Root_Stream_Type'Class);
    procedure Get_Character
       (Self   : in out Instance; 
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
@@ -191,7 +208,10 @@ private
       with No_Return;
    procedure Error(Self : Instance; Message : String) 
       with Inline, No_Return;
-   procedure Error(Self : Instance; Message : String; Line, Column : Positive)
-      with Inline, No_Return;
+   procedure Error
+      (Self    : Instance; 
+       Message : String; 
+       Line    : Line_Number; 
+       Column  : Column_Number) with Inline, No_Return;
 
 end Compiler.Lexer;

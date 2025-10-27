@@ -12,8 +12,8 @@ procedure Get_Numeric_Literal
     Stream : not null access Ada.Streams.Root_Stream_Type'Class)
 is 
 
-   Line  : constant Positive := Self.Line;
-   First : constant Positive := Self.Column;
+   Line  : constant Line_Number   := Self.Line;
+   First : constant Column_Number := Self.Column;
 
    -- Used for based literal parsing
    Pound_Count : Natural range 0 .. 2 := 0;  

@@ -31,8 +31,12 @@ package body Test_2 is
    end Unescape_String;
 
    function Tokenize_File(Lexer : in out Test_2.Lexer; Filename : String) return Boolean is 
-      Line  : Positive := 1;
-      First : Positive := 1;
+
+      Line  : Compiler.Lexer.Line_Number   := 1;
+      First : Compiler.Lexer.Column_Number := 1;
+
+      use type Compiler.Lexer.Line_Number;
+      use type Compiler.Lexer.Column_Number;
 
       File : File_Type;
 
@@ -150,6 +154,8 @@ package body Test_2 is
          Ada.Text_IO.Put("FAIL - Invalid directory name");
       end if;
       New_Line;
+
+      System("rm workspace/*.ad*");
 
       Search(Directory_Name, "", (Directory | Ordinary_File => True, others => False), Tokenize_File'Access);
 
