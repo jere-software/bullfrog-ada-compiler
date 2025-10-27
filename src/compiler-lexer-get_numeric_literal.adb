@@ -43,7 +43,7 @@ is
    -- Indicates if the literal has completed and ends with the appropriate
    -- character
    function Literal_Finished return Boolean is
-      (Pound_Count /= 1 and then Self.Last_In in Strings.Digit | Strings.Pound)
+      (Pound_Count /= 1 and then Self.Last_In in Strings.Numeral_Digit | Strings.Pound)
    with Inline;
 
    -- Recursive parsing function.
@@ -55,7 +55,7 @@ is
       for Index in Result'Range loop
 
          case Self.Next_In is
-            when Digit =>
+            when Numeral_Digit =>
                case Pound_Count is
                   when 0 => 
                      if Digit_Count <= 2 then
@@ -84,7 +84,7 @@ is
                      Self.Error("Extended digit outside of #'s if digit");
                   elsif Exponent_Found then
                      Self.Error("Too many exponents for digit");
-                  elsif Pound_Count = 0 and Self.Last_In not in Digit then
+                  elsif Pound_Count = 0 and Self.Last_In not in Numeral_Digit then
                      Self.Error("Exponent must be preceded by a digit");
                   elsif Pound_Count = 2 and Self.Last_In /= Pound then
                      Self.Error("Exponent must be preceded by '#'");
@@ -178,7 +178,7 @@ is
                   Self.Error("- must follow an 'E' or 'e' in digit");
                end if;
             when others => 
-               if Is_Alpha(Self.Next_In) then
+               if Is_Letter(Self.Next_In) then
                   Self.Error("End of numeric literal invalid");
                elsif not Literal_Finished then
                   if Pound_Count = 1 then

@@ -85,11 +85,11 @@ package Compiler.Strings is
    Zero              : constant Character := '0';
 
    -- Numeric literal types
-   subtype Digit is Character range '0' .. '9';
+   subtype Numeral_Digit is Character range '0' .. '9';
    subtype Extended_Digit is Character with Static_Predicate => 
       Extended_Digit in 'a'..'f' | 'A'..'F';
    subtype Hex_Digit is Character with Static_Predicate =>
-      Hex_Digit in Digit | Extended_Digit;
+      Hex_Digit in Numeral_Digit | Extended_Digit;
 
    -- Lexical separator types
    subtype Whitespace    is Character with Static_Predicate =>
@@ -129,14 +129,16 @@ package Compiler.Strings is
       (if Value < 0 then 
          Value'Image
        else 
-         Ada.Strings.Fixed.Trim(Value'Image, Ada.Strings.Left));
+         Ada.Strings.Fixed.Trim(Value'Image, Ada.Strings.Left))
+       with Inline;
    function Numeric_Value(Value : Hex_Digit) return Natural is
       (case Value is
          when '0'..'9' => Character'Pos(Value) - Character'Pos('0'),
          when 'a'..'f' => Character'Pos(Value) - Character'Pos('a') + 10,
-         when 'A'..'F' => Character'Pos(Value) - Character'Pos('A') + 10);
+         when 'A'..'F' => Character'Pos(Value) - Character'Pos('A') + 10)
+       with Inline;
    function Pos(Value : Character) return Natural is
-      (Character'Pos(Value));
+      (Character'Pos(Value)) with Inline;
    function Hash(Value : String) return Ada.Containers.Hash_Type
       renames Ada.Strings.Hash;
 
@@ -151,29 +153,27 @@ package Compiler.Strings is
       renames Handling.To_Upper;
 
    -- Utility operations for parsing
-   function Is_Alpha(Value : Character) return Boolean
+   function Is_Letter(Value : Character) return Boolean
       renames Handling.Is_Letter;
-   function Is_Digit(Value : Character) return Boolean
-      renames Handling.Is_Digit;
-   function Is_Hexadecimal_Digit(Value : Character) return Boolean
-      renames Handling.Is_Hexadecimal_Digit;
    function Is_Alphanumeric(Character : Strings.Character) return Boolean
       renames Handling.Is_Alphanumeric;
-   function Is_Newline(Character : Strings.Character) return Boolean
-      renames Handling.Is_Line_Terminator;
    function Is_Graphic(Character : Strings.Character) return Boolean
       renames Handling.Is_Graphic;
-   function Is_Name(Character : Strings.Character) return Boolean is
-      (Character = Underscore 
-       or else Is_Alphanumeric(Character));
-   function Is_Integer(Character : Strings.Character) return Boolean is
-      (Character in Underscore | Pound | Plus | Minus 
-       or else Is_Hexadecimal_Digit(Character));
-   function Is_Real(Character : Strings.Character) return Boolean is
-      (Character in Underscore | Period | Plus | Minus 
-       | Exponent_Lower | Exponent_Upper 
-       or else Is_Digit(Character));
-   function Is_Space(Character : Strings.Character) return Boolean is
+   function Is_Line_Terminator(Character : Strings.Character) return Boolean
+      renames Handling.Is_Line_Terminator;
+   function Is_Space(Character : Strings.Character) return Boolean
+      renames Handling.Is_Space;
+   function Is_Mark(Character : Strings.Character) return Boolean
+      renames Handling.Is_Mark;
+   function Is_Punctuation_Connector(Character : Strings.Character) return Boolean
+      renames Handling.Is_Punctuation_Connector;
+   function Is_Identifier(Character : Strings.Character) return Boolean is
+      (Is_Alphanumeric(Character) or else Is_Mark(Character));
+   function Is_Numeral(Value : Character) return Boolean
+      is (Value in Numeral_Digit);
+   function Is_Underline(Character : Strings.Character) return Boolean is
+      (Character = Underscore);
+   function Is_Whitespace(Character : Strings.Character) return Boolean is
       (Character in Whitespace);
    function Is_Operator(Character : Strings.Character) return Boolean is
       (Character in Operator_1_Character | Operator_2_Character);

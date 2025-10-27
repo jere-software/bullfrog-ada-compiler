@@ -21,23 +21,24 @@ procedure Main is
 
    procedure Execute(Filename : String) is
       Parser : Compiler.Parser.Instance;
+      Lexer  : Compiler.Lexer.Instance;
    begin
       Ada.Text_IO.Put("Parsing " & Filename & "... ");
 
       declare
-         Tree : Compiler.AST.Tree := Parser.Run(Filename);
+         --Tree : Compiler.AST.Tree := Parser.Run(Filename);
       begin
+         Lexer.Run(Filename);
          Ada.Text_IO.Put_Line("Tokens:");
          Ada.Text_IO.Put_Line("---------------------------------");
          
-         for Token of Parser.Lexer.All_Tokens.all loop
+         for Token of Lexer.All_Tokens.all loop
             Compiler.Lexer.Debug(Token);
          end loop;
       end;
       
    exception
-      when E : Compiler.Lexer.Lexical_Error =>
-         Ada.Text_IO.Put_Line(Exception_Message(E));
+      when E : Compiler.Lexer.Lexical_Error  => null;
       when E : Compiler.Parser.Parsing_Error =>
          Ada.Text_IO.Put_Line(Exception_Message(E));
       when E : Ada.IO_Exceptions.Name_Error =>
@@ -104,8 +105,7 @@ procedure Main is
          end;
       end loop;
    exception
-      when E : Compiler.Lexer.Lexical_Error =>
-         Ada.Text_IO.Put_Line(Exception_Message(E));
+      when E : Compiler.Lexer.Lexical_Error  => null;
       when E : Compiler.Parser.Parsing_Error =>
          Ada.Text_IO.Put_Line(Exception_Message(E));
       when E : others => 

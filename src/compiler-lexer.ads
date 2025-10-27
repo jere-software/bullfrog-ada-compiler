@@ -71,7 +71,9 @@ package Compiler.Lexer is
    -- Individual operations for getting tokens from a stream one
    -- by one.  Call Initialize first, then use Is_Running and
    -- Get_Token to iterate through tokens
-   procedure Initialize(Self : in out Instance); -- Resets lexer state
+   procedure Initialize -- Resets lexer state
+      (Self   : in out Instance;
+       Stream : not null access Ada.Streams.Root_Stream_Type'Class); 
    function Is_Running(Self : Instance) return Boolean with Inline;
    function Not_Running(Self : Instance) return Boolean with Inline;
    procedure Get_Token
@@ -172,7 +174,7 @@ private
    procedure Get_Identifier -- Can return Attribute or Pragma_ID tokens
       (Self   : in out Instance; 
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
-      with Pre => Strings.Is_Alpha(Self.Next_In);
+      with Pre => Strings.Is_Letter(Self.Next);
    procedure Get_Operator -- Can return Comment tokens
       (Self   : in out Instance; 
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
@@ -180,7 +182,7 @@ private
    procedure Get_Numeric_Literal -- Can return Operator_Range tokens
       (Self   : in out Instance; 
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
-      with Pre => Strings.Is_Digit(Self.Next_In);
+      with Pre => Strings.Is_Numeral(Self.Next_In);
    procedure Get_Character_Literal
       (Self   : in out Instance; 
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
