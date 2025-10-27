@@ -182,7 +182,7 @@ private
    procedure Get_Numeric_Literal -- Can return Operator_Range tokens
       (Self   : in out Instance; 
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
-      with Pre => Strings.Is_Numeral(Self.Next_In);
+      with Pre => Strings.Is_Numeral(Self.Next);
    procedure Get_Character_Literal
       (Self   : in out Instance; 
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)

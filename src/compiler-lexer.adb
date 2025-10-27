@@ -297,7 +297,7 @@ package body Compiler.Lexer is
       Self.Skip_Whitespace(Stream); 
       if Is_Letter(Self.Next) then
          Self.Get_Identifier(Stream);
-      elsif Is_Numeral(Self.Next_In) then -- may find range operator
+      elsif Is_Numeral(Self.Next) then -- may find range operator
          Self.Get_Numeric_Literal(Stream);
       elsif Self.Next_In = Quote then
          Self.Get_String_Literal(Stream);
@@ -356,74 +356,7 @@ package body Compiler.Lexer is
       Self.Tokens.Delete_Last;  -- Remove the token since we aren't keeping comments
    end Skip_Comment;
 
-   procedure Get_Identifier2
-      (Self   : in out Instance; 
-       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
-   is
-
-      use Strings;
-
-      Line  : constant Line_Number   := Self.Line;
-      First : constant Column_Number := Self.Column;
-      Last  :          Column_Number := Self.Column;
-
-      function Get_Identifier return String is
-         Temp : String(1..Default_String_Length);
-      begin
-         for Index in Temp'Range loop
-            if Is_Identifier(Self.Next_In) then
-               if          Self.Next_In = Strings.Underscore 
-                  and then Self.Last_In = Self.Next_In 
-               then
-                  Self.Error("Double underscore found, single underscore expected");
-               end if;
-               Temp(Index) := Self.Next_In;
-               Last := Self.Column;
-               Self.Get_Character(Stream);
-            else
-               if Self.Last_In = Strings.Underscore then
-                  Self.Error("Name ends in underscore, alphanumeric expected");
-               end if;
-               return Temp(1..Index-1);
-            end if;
-         end loop;
-         return Temp & Get_Identifier;
-      end Get_Identifier;
-
-      Result : constant String := Get_Identifier;
-
-      use type Tokens.Token_Kind;
-      
-      function Follows_Apostrophe return Boolean is
-         (Self.Tokens.Length not in 0 
-          and then Self.Token_Kind = Tokens.Operator_Apostrophe)
-      with Inline;
-
-      function Follows_Pragma return Boolean is
-         (Self.Tokens.Length not in 0 
-          and then Self.Token_Kind = Tokens.Keyword_Pragma)
-      with Inline;
-
-   begin
-      Self.Tokens.Append(Token'
-         (Kind  => (if Follows_Apostrophe then
-                       Tokens.Attribute
-                    elsif Follows_Pragma then
-                       Tokens.Pragma_ID
-                    else
-                       Keywords.Token_Kind(Result)),
-          Value => Strings.New_String(Result),
-          Line  => Line,
-          First => First,
-          Last  => Last));
-   end Get_Identifier2;
-
    procedure Get_Operator
-      (Self   : in out Instance; 
-       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
-      is separate;
-
-   procedure Get_Numeric_Literal
       (Self   : in out Instance; 
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
       is separate;
@@ -432,19 +365,19 @@ package body Compiler.Lexer is
       (Self   : in out Instance; 
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
    is 
-      Temp : Character;
+      Temp  : Character;
       First : constant Column_Number := Self.Column;
    begin
       
-      Self.Get_Character(Stream); -- Munch apostrophe
-      if not Strings.Is_Graphic(Self.Next_In) then
+      Self.Advance(Stream); -- Munch apostrophe
+      if Self.Not_Running or else not Strings.Is_Graphic(Self.Next) then
          Self.Error("Non graphic character found.  Character literal expected");
       end if;
 
-      Temp := Self.Next_In;
+      Temp := Self.Next;
 
-      Self.Get_Character(Stream);
-      if Self.Next_In /= Strings.Apostrophe then
+      Self.Advance(Stream);
+      if Self.Next /= Strings.Apostrophe then
          Self.Error("Closing apostrophe not found.  Character literal expected");
       end if;
 
@@ -453,9 +386,13 @@ package body Compiler.Lexer is
           Value => "" & Temp,
           Line  => Self.Line,
           First => First,
-          Last  => First + 2);  -- character literals always 3 characters long
+          Last  => Self.Column);
 
-      Self.Get_Character(Stream); -- Munch the apostrophe
+      Self.Advance(Stream); -- Munch the closing apostrophe
+
+      -- Character literals are always 3 "characters" long,
+      -- counting the apostrophes
+      pragma Assert((Self.Column - First) = 3);
 
    end Get_Character_Literal;
 
@@ -579,14 +516,16 @@ package body Compiler.Lexer is
 
    package Character_Vectors is new Ada.Containers.Vectors(Positive, Character);
    type Character_Vector is new Character_Vectors.Vector with null record;
-   function To_String(Buffer : Character_Vector) return String is
+   function Copy(Buffer : Character_Vector) return String is
    begin
       return Result : String(Buffer.First_Index .. Buffer.Last_Index) do
          for Index in Result'Range loop
             Result(Index) := Buffer.Element(Index);
          end loop;
       end return;
-   end To_String;
+   end Copy;
+
+   Default_Character_Vector_Size : constant := 256;
 
    generic
       with function Is_Character(Item : Character) return Boolean;
@@ -661,7 +600,7 @@ package body Compiler.Lexer is
           Is_Connector => Is_Punctuation_Connector,
           Target_Name  => "Identifier");
 
-      Buffer : Character_Vector;
+      Buffer : Character_Vector := Empty(Default_Character_Vector_Size);
 
       use type Tokens.Token_Kind;
       
@@ -678,7 +617,7 @@ package body Compiler.Lexer is
       function Parse return String is
       begin
          Parse(Self, Stream, Buffer);
-         return Buffer.To_String;
+         return Buffer.Copy;
       end Parse;
 
       First  : constant Column_Number := Self.Column;
@@ -697,5 +636,10 @@ package body Compiler.Lexer is
           First => First,
           Last  => Self.Column - 1));
    end Get_Identifier;
+
+    procedure Get_Numeric_Literal
+      (Self   : in out Instance; 
+       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
+      is separate;
 
 end Compiler.Lexer;

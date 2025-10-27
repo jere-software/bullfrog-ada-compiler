@@ -80,16 +80,22 @@ package Compiler.Strings is
    Period            : constant Character := '.';
    At_Sign           : constant Character := '@';
    Pound             : constant Character := '#';
-   Exponent_Lower    : constant Character := 'e';
-   Exponent_Upper    : constant Character := 'E';
+   Lower_A           : constant Character := 'a';
+   Lower_E           : constant Character := 'e';
+   Upper_A           : constant Character := 'A';
+   Upper_E           : constant Character := 'E';
    Zero              : constant Character := '0';
 
    -- Numeric literal types
    subtype Numeral_Digit is Character range '0' .. '9';
+   subtype Upper_Hex is Character range 'A' .. 'F';
+   subtype Lower_Hex is Character range 'a' .. 'f';
    subtype Extended_Digit is Character with Static_Predicate => 
-      Extended_Digit in 'a'..'f' | 'A'..'F';
+      Extended_Digit in Upper_Hex | Lower_Hex;
    subtype Hex_Digit is Character with Static_Predicate =>
       Hex_Digit in Numeral_Digit | Extended_Digit;
+   subtype E is Character with Static_Predicate =>
+      E in Upper_E | Lower_E;
 
    -- Lexical separator types
    subtype Whitespace    is Character with Static_Predicate =>
@@ -119,6 +125,9 @@ package Compiler.Strings is
          | Colon
          | Equals
          | Period;
+
+   -- Type used for Hex_Digit conversions
+   type Number_Base is range 2 .. 16;
    
    -- Type conversion operations
    function To_String(Value : Standard.String) return String
@@ -131,12 +140,15 @@ package Compiler.Strings is
        else 
          Ada.Strings.Fixed.Trim(Value'Image, Ada.Strings.Left))
        with Inline;
-   function Numeric_Value(Value : Hex_Digit) return Natural is
+   function Value(Value : String) return Integer is
+      (Integer'Value(Value)) with Inline;
+   function Numeric_Value(Value : Character) return Number_Base'Base is
       (case Value is
-         when '0'..'9' => Character'Pos(Value) - Character'Pos('0'),
-         when 'a'..'f' => Character'Pos(Value) - Character'Pos('a') + 10,
-         when 'A'..'F' => Character'Pos(Value) - Character'Pos('A') + 10)
-       with Inline;
+         when Numeral_Digit => Character'Pos(Value) - Character'Pos(Zero),
+         when Lower_Hex     => Character'Pos(Value) - Character'Pos(Lower_A) + 10,
+         when Upper_Hex     => Character'Pos(Value) - Character'Pos(Upper_A) + 10,
+         when others        => Number_Base'Last)
+       with Static, Inline;
    function Pos(Value : Character) return Natural is
       (Character'Pos(Value)) with Inline;
    function Hash(Value : String) return Ada.Containers.Hash_Type
@@ -167,16 +179,21 @@ package Compiler.Strings is
       renames Handling.Is_Mark;
    function Is_Punctuation_Connector(Character : Strings.Character) return Boolean
       renames Handling.Is_Punctuation_Connector;
-   function Is_Identifier(Character : Strings.Character) return Boolean is
-      (Is_Alphanumeric(Character) or else Is_Mark(Character));
+   function Is_Identifier(Value : Character) return Boolean is
+      (Is_Alphanumeric(Value) or else Is_Mark(Value)) with Inline;
    function Is_Numeral(Value : Character) return Boolean
-      is (Value in Numeral_Digit);
-   function Is_Underline(Character : Strings.Character) return Boolean is
-      (Character = Underscore);
-   function Is_Whitespace(Character : Strings.Character) return Boolean is
-      (Character in Whitespace);
+      is (Value in Numeral_Digit) with Static, Inline;
+   function Is_Numeral(Value : Character; Base : Number_Base) return Boolean
+      is (Numeric_Value(Value) < Base) with Static, Inline;
+   function Is_Underline(Value : Character) return Boolean is
+      (Value = Underscore) with Static, Inline;
+   function Is_Whitespace(Value : Character) return Boolean is
+      (        Is_Space(Value) 
+       or else Value = Tab 
+       or else Is_Line_Terminator(Value)) with Inline;
    function Is_Operator(Character : Strings.Character) return Boolean is
-      (Character in Operator_1_Character | Operator_2_Character);
+      (Character in Operator_1_Character | Operator_2_Character)
+      with Static, Inline;
 
    -- Utility operations for getting input data
    function Stream(File : File_Type) return Stream_Access
