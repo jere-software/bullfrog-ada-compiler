@@ -114,8 +114,66 @@ is
    Base_10_Numeral   : constant String := "Decimal literal must be expressed in base 10";
    Not_Separated     : constant String := "Literals must be separated by whitespace or a delimiter";
    
+   -- Ensures the next character is a valid numeral to parse
+   procedure Validate_Has_Numeral with Pre => State not in Decimal;
+   procedure Validate_Has_Numeral is
+   begin
+      if not Is_Numeral(Self.Next) then
+         if Self.Not_Running or else Is_Whitespace(Self.Next) then
+            Self.Error(Incomplete_Number);
+         else
+            case Self.Next is
+               when Hex_Digit =>
+                  case State is
+                     when Decimal | Decimal_Real => Self.Error(Base_10_Numeral);
+                     when Based   | Based_Real   => Self.Error(Digit_Too_High);
+                     when Exponent               => Self.Error(Base_10_Exponent);
+                  end case;
+               when others =>
+                  case State is
+                     when Decimal      => Self.Error(Invalid_Character);
+                     when Decimal_Real => Self.Error(Missing_Real);
+                     when Based        => Self.Error(Missing_Based);
+                     when Based_Real   => Self.Error(Missing_Real);
+                     when Exponent     => Self.Error(Missing_Exponent);
+                  end case;
+            end case;
+         end if;
+      end if;
+   end Validate_Has_Numeral;
+
+   -- Ensures the literal isn't concatenated to an identifier
+   -- or another numeric literal, which would be an error
+   procedure Validate_End_Of_Literal is
+   begin
+      if Is_Identifier(Self.Next) then
+         case Self.Next is
+            when Numeral_Digit =>
+               Self.Error(Not_Separated);
+            when Extended_Digit =>
+               case State is
+                  when Decimal | Decimal_Real => Self.Error(Base_10_Numeral);
+                  when Exponent               => Self.Error(Base_10_Exponent);
+                  when others                 => Self.Error(Invalid_Character);
+               end case;
+            when others => 
+               Self.Error(Invalid_Character);
+         end case;
+      end if;
+   end Validate_End_Of_Literal;
+
 begin
 
+   -- Decimal   Based     Real                Exponent
+   -- ------------------------------------------------
+   -- numeral
+   -- numeral                       E|e [+|-] numeral
+   -- numeral           . numeral
+   -- numeral           . numeral   E|e [+|-] numeral
+   -- numeral # numeral           #
+   -- numeral # numeral           # E|e [+|-] numeral
+   -- numeral # numeral . numeral #
+   -- numeral # numeral . numeral # E|e [+|-] numeral
    loop
       -- Get full numeral, including underlines, but not separators
       Parse_Numeral(Self, Stream, Buffer);
@@ -152,48 +210,14 @@ begin
             exit;
       end case;
 
-      -- Ensure next character is a valid numeral
-      -- before going back into generic parsing
-      if not Is_Numeral(Self.Next) then
-         if Self.Not_Running or else Is_Whitespace(Self.Next) then
-            Self.Error(Incomplete_Number);
-         else
-            case Self.Next is
-               when Hex_Digit =>
-                  case State is
-                     when Decimal | Decimal_Real => Self.Error(Base_10_Numeral);
-                     when Based   | Based_Real   => Self.Error(Digit_Too_High);
-                     when Exponent               => Self.Error(Base_10_Exponent);
-                  end case;
-               when others =>
-                  case State is
-                     when Decimal      => Self.Error(Invalid_Character);
-                     when Decimal_Real => Self.Error(Missing_Real);
-                     when Based        => Self.Error(Missing_Based);
-                     when Based_Real   => Self.Error(Missing_Real);
-                     when Exponent     => Self.Error(Missing_Exponent);
-                  end case;
-            end case;
-            
-         end if;
-      end if;
+      -- Ensure there is a numeral to parse before
+      -- continuing the loop
+      Validate_Has_Numeral;
+
    end loop;
 
-   -- Some final validation (mainly for better error messages)
-   if Self.Next in Numeral_Digit then
-      Self.Error(Not_Separated);
-   elsif Is_Identifier(Self.Next) then
-      case Self.Next is
-         when Extended_Digit =>
-            case State is
-               when Decimal | Decimal_Real => Self.Error(Base_10_Numeral);
-               when Exponent               => Self.Error(Base_10_Exponent);
-               when others                 => Self.Error(Invalid_Character);
-            end case;
-         when others => 
-            Self.Error(Invalid_Character);
-      end case;
-   end if;
+   -- Ensure the end of the literal is valid
+   Validate_End_Of_Literal;
    
    Self.Tokens.Append(Token'
       (Kind  => 
