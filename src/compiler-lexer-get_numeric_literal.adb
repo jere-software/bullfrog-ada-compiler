@@ -90,10 +90,6 @@ is
    function Is_Range return Boolean is (Self.Peek = Period) 
       with Inline, Pre => Self.Next = Period and State = Decimal;
 
-   -- Indicates if the current buffer is ending with the correct character
-   function Finished return Boolean is (not Is_Identifier(Self.Next)) 
-      with Inline, Pre => State in Decimal | Decimal_Real | Exponent;
-
    -- Indicates if an exponent is expected.  Munches the pound sign
    -- regardless of result.
    function No_Exponent return Boolean
@@ -107,47 +103,17 @@ is
 
    -- Error messages
    Invalid_Character : constant String := "Invalid character for numeric literal";
+   Missing_Based     : constant String := "A numeral digit expected after " & Pound;
+   Missing_Real      : constant String := "A numeral digit expected after " & Period;
+   Missing_Exponent  : constant String := "A numeral digit expected for exponent";
+   Incomplete_Number : constant String := "Unexpected end to numeric literal";
    Incomplete_Based  : constant String := "Based literal must end with a " & Pound;
    Digit_Too_High    : constant String := "Digit too high for supplied base";
-   Too_Many_Periods  : constant String := "Real literal cannot have multiple decimal periods";
    No_Real_Base      : constant String := "Based literal cannot have a real base";
    Base_10_Exponent  : constant String := "Exponent must be expressed in base 10";
    Base_10_Numeral   : constant String := "Decimal literal must be expressed in base 10";
-
-   -- Custom error messages based on state.  Called if failed to complete literal
-   procedure Raise_Error with No_Return;
-   procedure Raise_Error is
-   begin
-      case State is 
-         when Decimal      =>
-            case Self.Next is
-               when Extended_Digit => Self.Error(Base_10_Numeral);
-               when others         => Self.Error(Invalid_Character);
-            end case;
-         when Decimal_Real =>
-            case Self.Next is
-               when Extended_Digit => Self.Error(Base_10_Numeral);
-               when others         => Self.Error(Invalid_Character);
-            end case;
-         when Based => 
-            case Self.Next is
-               when Hex_Digit => Self.Error(Digit_Too_High);
-               when others    => Self.Error(Incomplete_Based);
-            end case;
-         when Based_Real => 
-            case Self.Next is
-               when Hex_Digit => Self.Error(Digit_Too_High);
-               when Period    => Self.Error(Too_Many_Periods);
-               when others    => Self.Error(Incomplete_Based);
-            end case;
-         when Exponent => 
-            case Self.Next is
-               when Extended_Digit => Self.Error(Base_10_Exponent);
-               when others         => Self.Error(Invalid_Character);
-            end case;
-      end case;
-   end Raise_Error;
-
+   Not_Separated     : constant String := "Literals must be separated by whitespace or a delimiter";
+   
 begin
 
    loop
@@ -161,33 +127,73 @@ begin
                when Period   => exit when Is_Range; Set_State_To(Decimal_Real);
                when Pound    =>                     Set_State_To(Based);
                when E        =>                     Set_State_To(Exponent);
-               when others   => exit when Finished; Raise_Error;
+               when others   => exit;
             end case;
          when Decimal_Real =>
             case Self.Next is
-               when Pound    =>                     Self.Error(No_Real_Base);
-               when E        =>                     Set_State_To(Exponent);
-               when others   => exit when Finished; Raise_Error;
+               when E      => Set_State_To(Exponent);
+               when Pound  => Self.Error(No_Real_Base);
+               when others => exit;
             end case;
          when Based =>
             case Self.Next is
-               when Period =>                        Set_State_To(Based_Real);
-               when Pound  => exit when No_Exponent; Set_State_To(Exponent);
-               when others =>                        Raise_Error;
+               when Period    =>                        Set_State_To(Based_Real);
+               when Pound     => exit when No_Exponent; Set_State_To(Exponent);
+               when Hex_Digit =>                        Self.Error(Digit_Too_High);
+               when others    =>                        Self.Error(Incomplete_Based);
             end case;
          when Based_Real =>
             case Self.Next is
-               when Pound  => exit when No_Exponent; Set_State_To(Exponent);
-               when others =>                        Raise_Error;
+               when Pound     => exit when No_Exponent; Set_State_To(Exponent);
+               when Hex_Digit =>                        Self.Error(Digit_Too_High);
+               when others    =>                        Self.Error(Incomplete_Based);
             end case;
-         when Exponent => exit when Finished; Raise_Error;
+         when Exponent => 
+            exit;
       end case;
 
-      -- Ensure next character is a numeral
+      -- Ensure next character is a valid numeral
+      -- before going back into generic parsing
       if not Is_Numeral(Self.Next) then
-         Self.Error(Invalid_Character);
+         if Self.Not_Running or else Is_Whitespace(Self.Next) then
+            Self.Error(Incomplete_Number);
+         else
+            case Self.Next is
+               when Hex_Digit =>
+                  case State is
+                     when Decimal | Decimal_Real => Self.Error(Base_10_Numeral);
+                     when Based   | Based_Real   => Self.Error(Digit_Too_High);
+                     when Exponent               => Self.Error(Base_10_Exponent);
+                  end case;
+               when others =>
+                  case State is
+                     when Decimal      => Self.Error(Invalid_Character);
+                     when Decimal_Real => Self.Error(Missing_Real);
+                     when Based        => Self.Error(Missing_Based);
+                     when Based_Real   => Self.Error(Missing_Real);
+                     when Exponent     => Self.Error(Missing_Exponent);
+                  end case;
+            end case;
+            
+         end if;
       end if;
    end loop;
+
+   -- Some final validation (mainly for better error messages)
+   if Self.Next in Numeral_Digit then
+      Self.Error(Not_Separated);
+   elsif Is_Identifier(Self.Next) then
+      case Self.Next is
+         when Extended_Digit =>
+            case State is
+               when Decimal | Decimal_Real => Self.Error(Base_10_Numeral);
+               when Exponent               => Self.Error(Base_10_Exponent);
+               when others                 => Self.Error(Invalid_Character);
+            end case;
+         when others => 
+            Self.Error(Invalid_Character);
+      end case;
+   end if;
    
    Self.Tokens.Append(Token'
       (Kind  => 
