@@ -322,38 +322,19 @@ package body Compiler.Lexer is
 
    end Get_Token;
 
-   procedure Get_Comment
-      (Self   : in out Instance; 
-       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
-   is
-      function Get_Comment return String is
-         Result : String(1..Default_String_Length);
-         Index : Positive := 1;
-      begin
-         while Self.Is_Running and not Strings.Is_Line_Terminator(Self.Next_In)  loop
-            Result(Index) := Self.Next_In;
-            Self.Get_Character(Stream);
-            if Index = Default_String_Length then
-               return Result & Get_Comment;
-            else
-               Index := Index + 1;
-            end if;
-         end loop;
-         return Result(1..Natural(Index)-1);
-      end Get_Comment;
-   begin
-      Self.Set_Token_Value(Get_Comment);
-      Self.Set_Token_Last(Self.Column-1);
-   end Get_Comment;
-
    procedure Skip_Comment
       (Self   : in out Instance; 
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
-   is begin
-      while Self.Is_Running and not Strings.Is_Line_Terminator(Self.Next_In) loop
-         Self.Get_Character(Stream);
+   is 
+      function Is_Comment(Item : Character) return Boolean is
+         (not Strings.Is_Line_Terminator(Item)) with Inline;
+   begin
+      while Self.Is_Running and Is_Comment(Self.Next) loop
+         Self.Advance(Stream);
       end loop;
-      Self.Tokens.Delete_Last;  -- Remove the token since we aren't keeping comments
+      
+      -- Remove the token since we aren't keeping comments
+      Self.Tokens.Delete_Last;  
    end Skip_Comment;
 
    procedure Get_Delimiter
@@ -634,6 +615,24 @@ package body Compiler.Lexer is
           First => First,
           Last  => Self.Column - 1));
    end Get_Identifier;
+
+   procedure Get_Comment
+      (Self   : in out Instance; 
+       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
+   is
+      function Is_Comment(Item : Character) return Boolean is
+         (not Strings.Is_Line_Terminator(Item)) with Inline;
+
+      Buffer : Character_Vector := Empty(Default_Character_Vector_Size);
+   begin
+      while Self.Is_Running and Is_Comment(Self.Next) loop
+         Buffer.Append(Self.Next);
+         Self.Advance(Stream);
+      end loop;
+      
+      Self.Set_Token_Value(Buffer.Copy);
+      Self.Set_Token_Last(Self.Column-1);
+   end Get_Comment;
 
     procedure Get_Numeric_Literal
       (Self   : in out Instance; 
