@@ -102,8 +102,8 @@ package Compiler.Strings is
       Whitespace in Tab .. Carriage_Return | Space;
 
    -- Operator detection types
-   subtype Operator_1_Character is Character with Static_Predicate =>
-      Operator_1_Character in 
+   subtype Delimiter_1_Character is Character with Static_Predicate =>
+      Delimiter_1_Character in 
            Plus 
          | Ampersand 
          | Bar 
@@ -115,8 +115,8 @@ package Compiler.Strings is
          | Comma
          | Apostrophe
          | At_Sign;
-   subtype Operator_2_Character is Character with Static_Predicate =>
-      Operator_2_Character in 
+   subtype Delimiter_2_Character is Character with Static_Predicate =>
+      Delimiter_2_Character in 
            Minus 
          | Asterisk
          | Forward_Slash
@@ -191,8 +191,8 @@ package Compiler.Strings is
       (        Is_Space(Value) 
        or else Value = Tab 
        or else Is_Line_Terminator(Value)) with Inline;
-   function Is_Operator(Character : Strings.Character) return Boolean is
-      (Character in Operator_1_Character | Operator_2_Character)
+   function Is_Delimiter(Character : Strings.Character) return Boolean is
+      (Character in Delimiter_1_Character | Delimiter_2_Character)
       with Static, Inline;
 
    -- Utility operations for getting input data

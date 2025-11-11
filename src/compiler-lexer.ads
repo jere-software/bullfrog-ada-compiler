@@ -175,11 +175,11 @@ private
       (Self   : in out Instance; 
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
       with Pre => Strings.Is_Letter(Self.Next);
-   procedure Get_Operator -- Can return Comment tokens
+   procedure Get_Delimiter -- Can return Comment tokens
       (Self   : in out Instance; 
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
-      with Pre => Strings.Is_Operator(Self.Next_In);
-   procedure Get_Numeric_Literal -- Can return Operator_Range tokens
+      with Pre => Strings.Is_Delimiter(Self.Next);
+   procedure Get_Numeric_Literal -- Can return Delimiter_Range tokens
       (Self   : in out Instance; 
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
       with Pre => Strings.Is_Numeral(Self.Next);

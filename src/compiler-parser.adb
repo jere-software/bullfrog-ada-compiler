@@ -253,7 +253,7 @@ package body Compiler.Parser is
 
          -- See if this is an aspect with an attribute
          -- or just a basic aspect
-         if Self.Match(Tokens.Operator_Apostrophe) then
+         if Self.Match(Tokens.Delimiter_Apostrophe) then
             Self.Match(Tokens.Attribute);
             ID := Aspect_ID(Base, Self.Token_Value);
          else

@@ -289,8 +289,8 @@ package body Compiler.Lexer is
               Identifier 
             | Attribute
             | Keyword_All 
-            | Operator_Close_Parenthesis
-            | Operator_Close_Bracket);
+            | Delimiter_Close_Parenthesis
+            | Delimiter_Close_Bracket);
 
       use Strings.Text_IO;
    begin
@@ -303,8 +303,8 @@ package body Compiler.Lexer is
          Self.Get_String_Literal(Stream);
       elsif Self.Next_in = Apostrophe and then Is_Literal then
          Self.Get_Character_Literal(Stream);
-      elsif Is_Operator(Self.Next_In) then -- may find comment
-         Self.Get_Operator(Stream);
+      elsif Is_Delimiter(Self.Next) then -- may find comment
+         Self.Get_Delimiter(Stream);
 
          -- if the operator ended up being a comment
          -- instead, then read the rest of the line
@@ -356,7 +356,7 @@ package body Compiler.Lexer is
       Self.Tokens.Delete_Last;  -- Remove the token since we aren't keeping comments
    end Skip_Comment;
 
-   procedure Get_Operator
+   procedure Get_Delimiter
       (Self   : in out Instance; 
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
       is separate;
@@ -606,7 +606,7 @@ package body Compiler.Lexer is
       
       function Follows_Apostrophe return Boolean is
          (Self.Tokens.Length not in 0 
-          and then Self.Token_Kind = Tokens.Operator_Apostrophe)
+          and then Self.Token_Kind = Tokens.Delimiter_Apostrophe)
       with Inline;
 
       function Follows_Pragma return Boolean is
