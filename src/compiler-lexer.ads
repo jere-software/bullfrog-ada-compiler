@@ -88,15 +88,6 @@ package Compiler.Lexer is
    function Token_Value(Self : Instance) return Strings.String
       with  Inline, 
             Pre => Self.All_Tokens.Length not in 0;
-   function Token_Line(Self : Instance) return Line_Number
-      with  Inline, 
-            Pre => Self.All_Tokens.Length not in 0;
-   function Token_First(Self : Instance) return Column_Number
-      with  Inline, 
-            Pre => Self.All_Tokens.Length not in 0;
-   function Token_Last(Self : Instance) return Column_Number
-      with  Inline, 
-            Pre => Self.All_Tokens.Length not in 0;
 
    -- Returns the current list of tokens found so far
    function All_Tokens(Self : aliased Instance) 
@@ -133,8 +124,6 @@ private
    type Instance is new Ada.Finalization.Limited_Controlled with record
       Next        : Character          := Strings.Space;  -- Next character to process
       Peek        : Character          := Strings.Space;  -- Future character to process
-      Next_In     : Character          := Strings.Space;  -- Next character to process
-      Last_In     : Character          := Strings.Space;  -- Last character processed
       State       : Lexer.Status       := Off;
       Tokens      : aliased Token_List := Empty_Token_List;
       Line        : Line_Number        := 1;
@@ -190,16 +179,12 @@ private
    procedure Get_String_Literal
       (Self   : in out Instance; 
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
-      with Pre => Self.Next_In in Strings.Quote;
+      with Pre => Self.Next in Strings.Quote;
 
    -- Low level input operations
    procedure Advance
       (Self   : in out Instance;
        Stream : not null access Ada.Streams.Root_Stream_Type'Class);
-   procedure Get_Character
-      (Self   : in out Instance; 
-       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
-      with Pre => Self.Is_Running;
    procedure Skip_Whitespace
       (Self   : in out Instance; 
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)

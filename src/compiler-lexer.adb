@@ -63,12 +63,6 @@ package body Compiler.Lexer is
       (Self.Tokens(Self.Tokens.Last_Index).Kind);
    function Token_Value(Self : Instance) return Strings.String is
       (Self.Tokens(Self.Tokens.Last_Index).Value.Get);
-   function Token_Line(Self : Instance) return Line_Number is
-      (Self.Tokens(Self.Tokens.Last_Index).Line);
-   function Token_First(Self : Instance) return Column_Number is
-      (Self.Tokens(Self.Tokens.Last_Index).First);
-   function Token_Last(Self : Instance) return Column_Number is
-      (Self.Tokens(Self.Tokens.Last_Index).Last);
 
    function All_Tokens(Self : aliased Instance) 
       return not null access constant Token_List 
@@ -138,8 +132,6 @@ package body Compiler.Lexer is
       Self.Tokens      := Empty_Token_List;
       Self.Next        := Strings.Space;
       Self.Peek        := Strings.Space;
-      Self.Next_In     := Strings.Space;
-      Self.Last_In     := Strings.Space;
       Self.Line        := 1;
       Self.Column      := 1;
       Self.Next_Line   := 1;
@@ -216,42 +208,6 @@ package body Compiler.Lexer is
          end if;
    end Advance;
 
-   procedure Get_Character
-      (Self   : in out Instance; 
-       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
-   is
-      package Text_IO renames Strings.Text_IO;
-      function Already_Found return Boolean is
-         (Self.Last_In = Strings.Carriage_Return and Self.Next_In = Strings.New_Line)
-      with Inline;
-   begin
-      Self.Last_In := Self.Next_In;
-      Self.Line    := Self.Next_Line;
-      Self.Column  := Self.Next_Column;
-      Character'Read(Stream, Self.Next_In);
-      
-      --Self.Debug;
-
-      if Strings.Is_Line_Terminator(Self.Next_In) then
-         if not Already_Found then
-            Self.Next_Line   := Self.Next_Line + 1;
-            Self.Next_Column := 1;
-         end if;
-      else
-         Self.Next_Column := Self.Next_Column + 1;
-      end if;
-
-   exception
-      when others => 
-         case Self.State is
-            when Off => raise;
-            when others => 
-               Self.State   := Off;
-               Self.Next_In := Strings.Space;
-               --Self.Debug;
-         end case;
-   end Get_Character;
-
    procedure Skip_Whitespace
       (Self   : in out Instance; 
        Stream : not null access Ada.Streams.Root_Stream_Type'Class) 
@@ -299,7 +255,7 @@ package body Compiler.Lexer is
          Self.Get_Identifier(Stream);
       elsif Is_Numeral(Self.Next) then -- may find range operator
          Self.Get_Numeric_Literal(Stream);
-      elsif Self.Next_In = Quote then
+      elsif Self.Next = Quote then
          Self.Get_String_Literal(Stream);
       elsif Self.Next = Apostrophe and then Is_Literal then
          Self.Get_Character_Literal(Stream);
@@ -336,120 +292,6 @@ package body Compiler.Lexer is
       -- Remove the token since we aren't keeping comments
       Self.Tokens.Delete_Last;  
    end Skip_Comment;
-
-   procedure Get_Delimiter
-      (Self   : in out Instance; 
-       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
-      is separate;
-
-   procedure Get_Character_Literal
-      (Self   : in out Instance; 
-       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
-   is 
-      Temp  : constant Character     := Self.Peek; -- The expected character
-      First : constant Column_Number := Self.Column;
-   begin
-      
-      Self.Advance(Stream); -- Munch apostrophe
-      if Self.Not_Running or else not Strings.Is_Graphic(Self.Next) then
-         Self.Error("Non graphic character found.  Character literal expected");
-      end if;
-
-      Self.Advance(Stream); -- Munch the graphic character
-      if Self.Next /= Strings.Apostrophe then
-         Self.Error("Closing apostrophe not found.  Character literal expected");
-      end if;
-
-      Self.Add_Token
-         (Kind  => Tokens.Character_Literal,
-          Value => "" & Temp,
-          Line  => Self.Line,
-          First => First,
-          Last  => Self.Column);
-
-      Self.Advance(Stream); -- Munch the closing apostrophe
-
-      -- Character literals are always 3 "characters" long,
-      -- counting the apostrophes
-      pragma Assert((Self.Column - First) = 3);
-
-   end Get_Character_Literal;
-
-   procedure Get_String_Literal
-      (Self   : in out Instance; 
-       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
-   is
-
-      First : constant Column_Number := Self.Column;
-
-      Quote_Found : Boolean := False;
-
-      function Get_String return String is
-         Result : String(1..Default_String_Length);
-         Index  : Positive := 1;
-      begin
-
-         -- Loop while graphics characters are coming in
-         while Self.Is_Running and Strings.Is_Graphic(Self.Next_In) loop
-
-            -- See if character is quote or not
-            if Self.Next_In in Strings.Quote then
-
-               -- Found a quote, so toggle found state
-               Quote_Found := not Quote_Found;  -- toggle
-
-               -- If still looking for closing quote, then 
-               -- save the value and move on
-               if not Quote_Found then
-                  Result(Index) := Self.Next_In;
-                  if Index = Default_String_Length then
-                     Self.Get_Character(Stream);
-                     return Result & Get_String;
-                  else
-                     Index := Index + 1;
-                  end if;
-               end if;
-
-            elsif Quote_Found then
-               -- Not a quote, but last character was a quote,
-               -- so we are done
-               return Result(1..Natural(Index)-1);
-            else
-               -- Not a quote and last character was not a quote,
-               -- so save the value and move on
-               Result(Index) := Self.Next_In;
-               if Index = Default_String_Length then
-                  Self.Get_Character(Stream);
-                  return Result & Get_String;
-               else
-                  Index := Index + 1;
-               end if;
-            end if;
-
-            Self.Get_Character(Stream);
-            
-         end loop;
-
-         if not Quote_Found then
-            Self.Error("Closing quotation not found.  String literal expected");
-         end if;
-
-         return Result(1..Natural(Index)-1);
-         
-      end Get_String;
-   begin
-      Self.Get_Character(Stream); -- Munch the quote
-      declare
-         Result : constant String := Get_String;
-      begin
-         Self.Add_Token
-            (Kind  => Tokens.String_Literal,
-             Value => Result,
-             Line  => Self.Line,
-             First => First,
-             Last  => Self.Column - 1);
-      end;
-   end Get_String_Literal;
 
    ------------------------------------------------------
    -------------- Lexer Output Operations ---------------
@@ -634,16 +476,114 @@ package body Compiler.Lexer is
          Buffer.Reserve_Capacity(Default_Character_Vector_Size);
 
          Parse_Comment(Self, Stream, Buffer);
-      
-         -- Update the existing token
-         Self.Set_Token_Value("--" & String'(Buffer.Copy));
-         Self.Set_Token_Last(Self.Column-1);
+
       end if;
+
+      -- Update the existing token
+      Self.Set_Token_Value(String'(Buffer.Copy));
+      Self.Set_Token_Last(Self.Column-1);
    end Get_Comment;
+
+   procedure Get_String_Literal
+      (Self   : in out Instance; 
+       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
+   is 
+
+      use Strings;
+
+      Buffer : Character_Vector;
+      function Is_String(Item : Character) return Boolean is
+         (Item /= Quote and then Is_Graphic(Item)) with Inline;
+      function Not_Empty_String return Boolean is
+         (Self.Next /= Quote or Self.Peek = Quote) 
+          with Inline, Pre => Is_Graphic(Self.Next);
+
+      Bad_End : constant String := "Unexpected end to string literal";
+
+      First : constant Column_Number := Self.Column;
+   begin
+      Self.Advance(Stream);  -- Munch quote
+
+      -- Make sure there is some valid character to check
+      if Self.Not_Running or not Is_Graphic(Self.Next) then
+         Self.Error(Bad_End);
+      elsif Not_Empty_String then 
+         -- If there is going to be data to add, reserve some
+         -- buffer capacity as an optimization
+         Buffer.Reserve_Capacity(Default_Character_Vector_Size);
+      end if;
+
+      loop
+         -- Get every graphic character up to quote
+         while Self.Is_Running and Is_String(Self.Next) loop
+            Buffer.Append(Self.Next);
+            Self.Advance(Stream);
+         end loop;
+
+         -- Strings must end in a quote
+         if Self.Next /= Quote then
+            Self.Error(Bad_End);
+         end if;
+
+         Self.Advance(Stream); -- Munch quote
+         exit when Self.Next /= Quote;  -- Done unless escaping a quote
+
+         -- Here we had two "" side by side, which is an escaped quote
+         Buffer.Append(Quote); -- Add escaped quote
+         Self.Advance(Stream);
+
+      end loop;
+
+      Self.Add_Token
+         (Kind  => Tokens.String_Literal,
+          Value => Buffer.Copy,
+          Line  => Self.Line,
+          First => First,
+          Last  => Self.Column - 1);
+      
+   end Get_String_Literal;
 
     procedure Get_Numeric_Literal
       (Self   : in out Instance; 
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
       is separate;
+
+   procedure Get_Delimiter
+      (Self   : in out Instance; 
+       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
+      is separate;
+
+   procedure Get_Character_Literal
+      (Self   : in out Instance; 
+       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
+   is 
+      Temp  : constant Character     := Self.Peek; -- The expected character
+      First : constant Column_Number := Self.Column;
+   begin
+      
+      Self.Advance(Stream); -- Munch apostrophe
+      if Self.Not_Running or else not Strings.Is_Graphic(Self.Next) then
+         Self.Error("Non graphic character found.  Character literal expected");
+      end if;
+
+      Self.Advance(Stream); -- Munch the graphic character
+      if Self.Next /= Strings.Apostrophe then
+         Self.Error("Closing apostrophe not found.  Character literal expected");
+      end if;
+
+      Self.Add_Token
+         (Kind  => Tokens.Character_Literal,
+          Value => "" & Temp,
+          Line  => Self.Line,
+          First => First,
+          Last  => Self.Column);
+
+      Self.Advance(Stream); -- Munch the closing apostrophe
+
+      -- Character literals are always 3 "characters" long,
+      -- counting the apostrophes
+      pragma Assert((Self.Column - First) = 3);
+
+   end Get_Character_Literal;
 
 end Compiler.Lexer;
