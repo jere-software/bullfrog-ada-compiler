@@ -293,50 +293,12 @@ package body Compiler.Lexer is
       Self.Tokens.Delete_Last;  
    end Skip_Comment;
 
-   ------------------------------------------------------
-   -------------- Lexer Output Operations ---------------
-   ------------------------------------------------------
-
-   procedure Halt(Self : Instance; Message : String) is
-   begin
-      Strings.Text_IO.Put_Line(Message);
-      raise Lexical_Error;
-   end Halt;
-
-   procedure Error(Self : Instance; Message : String) is
-   begin
-      Self.Error(Message, Self.Line, Self.Column);
-   end Error;
-
-   procedure Error
-      (Self    : Instance; 
-       Message : String; 
-       Line    : Line_Number; 
-       Column  : Column_Number)
-   is begin
-      Self.Halt
-         ("Lexical Error @ "
-          & Image(Line) & ":" & Image(Column)
-          & " => " & Message);
-   end Error;
-
-   procedure Debug(Self : Instance) is
-      use Strings.Text_IO;
-      use Strings;
-      use type Ada.Containers.Count_Type;
-   begin
-      Put(Image(Self.Line) & ":" & Image(Self.Column) & " => "
-         & Image(Pos(Self.Next)) & " => "
-         & "Count: " & Image(Natural(Self.Tokens.Length)) & " => ");
-      if Self.Tokens.Length > 0 then
-         Debug(Self.Tokens(Self.Tokens.Last_Index));
-      else
-         Text_IO.New_Line;
-      end if;
-   end Debug;
-
+   -- Temporary dynamic character buffers for reading strings of
+   -- unknown length from the input stream
    package Character_Vectors is new Ada.Containers.Vectors(Positive, Character);
    type Character_Vector is new Character_Vectors.Vector with null record;
+
+   -- Generates a string copy of the character buffer data
    function Copy(Buffer : Character_Vector) return String is
    begin
       return Result : String(Buffer.First_Index .. Buffer.Last_Index) do
@@ -346,8 +308,18 @@ package body Compiler.Lexer is
       end return;
    end Copy;
 
+   -- Default size to make a character buffer.  This
+   -- is used to avoid unnecessary copies while appending
+   -- new elements
    Default_Character_Vector_Size : constant := 256;
 
+   -- Provides a generic algorithm for parsing variable length
+   -- token string values.  This will read in characters and 
+   -- append them to the supplied buffer until the upcoming
+   -- input character fails the supplied Is_Charactar test.
+   --
+   -- NOTE:  This doesn't check the first character in the
+   -- stream
    generic
       with function Is_Character(Item : Character) return Boolean;
    procedure Generic_Parse
@@ -366,6 +338,18 @@ package body Compiler.Lexer is
       end loop;
    end Generic_Parse;
    
+   -- Provides a generic algorithm for parsing variable length
+   -- token string values.  This will read in characters and 
+   -- append them to the supplied buffer until the upcoming
+   -- input character fails the supplied Is_Charactar test.
+   -- After that, it will check if the next character passes
+   -- the Is_Connector test and, if so, restarts the original
+   -- loop to parse more characters.  Connector characters
+   -- cannot be adjacent to each other (EX: 123_456 is 
+   -- potentially valid but 123__456 is not)
+   --
+   -- NOTE:  This doesn't check the first character in the
+   -- stream
    generic
       with function Is_Character(Item : Character) return Boolean;
       with function Is_Connector(Item : Character) return Boolean;
@@ -543,7 +527,7 @@ package body Compiler.Lexer is
       
    end Get_String_Literal;
 
-    procedure Get_Numeric_Literal
+   procedure Get_Numeric_Literal
       (Self   : in out Instance; 
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
       is separate;
@@ -585,5 +569,47 @@ package body Compiler.Lexer is
       pragma Assert((Self.Column - First) = 3);
 
    end Get_Character_Literal;
+
+   ------------------------------------------------------
+   -------------- Lexer Output Operations ---------------
+   ------------------------------------------------------
+
+   procedure Halt(Self : Instance; Message : String) is
+   begin
+      Strings.Text_IO.Put_Line(Message);
+      raise Lexical_Error;
+   end Halt;
+
+   procedure Error(Self : Instance; Message : String) is
+   begin
+      Self.Error(Message, Self.Line, Self.Column);
+   end Error;
+
+   procedure Error
+      (Self    : Instance; 
+       Message : String; 
+       Line    : Line_Number; 
+       Column  : Column_Number)
+   is begin
+      Self.Halt
+         ("Lexical Error @ "
+          & Image(Line) & ":" & Image(Column)
+          & " => " & Message);
+   end Error;
+
+   procedure Debug(Self : Instance) is
+      use Strings.Text_IO;
+      use Strings;
+      use type Ada.Containers.Count_Type;
+   begin
+      Put(Image(Self.Line) & ":" & Image(Self.Column) & " => "
+         & Image(Pos(Self.Next)) & " => "
+         & "Count: " & Image(Natural(Self.Tokens.Length)) & " => ");
+      if Self.Tokens.Length > 0 then
+         Debug(Self.Tokens(Self.Tokens.Last_Index));
+      else
+         Text_IO.New_Line;
+      end if;
+   end Debug;
 
 end Compiler.Lexer;
