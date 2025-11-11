@@ -623,15 +623,22 @@ package body Compiler.Lexer is
       function Is_Comment(Item : Character) return Boolean is
          (not Strings.Is_Line_Terminator(Item)) with Inline;
 
-      Buffer : Character_Vector := Empty(Default_Character_Vector_Size);
+      procedure Parse_Comment is new Generic_Parse(Is_Comment);
+
+      Buffer : Character_Vector;
    begin
-      while Self.Is_Running and Is_Comment(Self.Next) loop
-         Buffer.Append(Self.Next);
-         Self.Advance(Stream);
-      end loop;
+      -- If there is a comment to read, then save it
+      -- and update the last token
+      if Self.Is_Running and Is_Comment(Self.Next) then
+
+         Buffer.Reserve_Capacity(Default_Character_Vector_Size);
+
+         Parse_Comment(Self, Stream, Buffer);
       
-      Self.Set_Token_Value("--" & String'(Buffer.Copy));
-      Self.Set_Token_Last(Self.Column-1);
+         -- Update the existing token
+         Self.Set_Token_Value("--" & String'(Buffer.Copy));
+         Self.Set_Token_Last(Self.Column-1);
+      end if;
    end Get_Comment;
 
     procedure Get_Numeric_Literal
