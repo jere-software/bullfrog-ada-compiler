@@ -101,7 +101,7 @@ package Compiler.Strings is
    subtype Whitespace    is Character with Static_Predicate =>
       Whitespace in Tab .. Carriage_Return | Space;
 
-   -- Operator detection types
+   -- Delimiter detection types
    subtype Delimiter_1_Character is Character with Static_Predicate =>
       Delimiter_1_Character in 
            Plus 

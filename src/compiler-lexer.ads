@@ -150,11 +150,11 @@ private
          Pre => Self.Tokens.Length not in 0;
 
    -- Top level scanning operations that generate tokens
-   procedure Get_Comment -- Usually called after Get_Operator
+   procedure Get_Comment -- Usually called after Get_Delimiter
       (Self   : in out Instance; 
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
       with Pre => Self.Token_Kind in Tokens.Comment;
-   procedure Skip_Comment -- Usually called after Get_Operator
+   procedure Skip_Comment -- Usually called after Get_Delimiter
       (Self   : in out Instance; 
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
       with Pre => Self.Token_Kind in Tokens.Comment;

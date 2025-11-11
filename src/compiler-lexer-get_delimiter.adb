@@ -5,7 +5,7 @@
 -- License, v. 2.0. If a copy of the MPL was not distributed with this
 -- file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
--- Parses the stream for an operator or a comment
+-- Parses the stream for an delimiter or a comment
 separate (Compiler.Lexer)
 procedure Get_Delimiter
    (Self   : in out Instance; 
@@ -97,7 +97,7 @@ begin
             when Period => Add_Compound(Delimiter_Range);
             when others => Add_Basic   (Delimiter_Dot);
          end case;
-      when others => Self.Error("Operator expected");
+      when others => Self.Error("Delimiter expected");
    end case;
 
 end Get_Delimiter;

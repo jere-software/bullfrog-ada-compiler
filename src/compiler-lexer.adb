@@ -220,14 +220,6 @@ package body Compiler.Lexer is
    end Skip_Whitespace;
 
    ------------------------------------------------------
-   ------------- Tokenization Declarations --------------
-   ------------------------------------------------------
-
-   -- Used for recursive operations.  Should be chosen such that
-   -- recursion rarely every occurs.
-   Default_String_Length : constant := 200;
-
-   ------------------------------------------------------
    ----------- Lexer Tokenization Operations ------------
    ------------------------------------------------------
    
@@ -253,7 +245,7 @@ package body Compiler.Lexer is
       Self.Skip_Whitespace(Stream); 
       if Is_Letter(Self.Next) then
          Self.Get_Identifier(Stream);
-      elsif Is_Numeral(Self.Next) then -- may find range operator
+      elsif Is_Numeral(Self.Next) then -- may find range delimiter
          Self.Get_Numeric_Literal(Stream);
       elsif Self.Next = Quote then
          Self.Get_String_Literal(Stream);
@@ -262,7 +254,7 @@ package body Compiler.Lexer is
       elsif Is_Delimiter(Self.Next) then -- may find comment
          Self.Get_Delimiter(Stream);
 
-         -- if the operator ended up being a comment
+         -- if the delimiter ended up being a comment
          -- instead, then read the rest of the line
          -- as a comment and update the token
          if Self.Token_Kind = Tokens.Comment then
