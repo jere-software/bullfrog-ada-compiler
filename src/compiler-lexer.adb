@@ -332,7 +332,7 @@ package body Compiler.Lexer is
       while Self.Is_Running and Is_Comment(Self.Next) loop
          Self.Advance(Stream);
       end loop;
-      
+
       -- Remove the token since we aren't keeping comments
       Self.Tokens.Delete_Last;  
    end Skip_Comment;
@@ -630,7 +630,7 @@ package body Compiler.Lexer is
          Self.Advance(Stream);
       end loop;
       
-      Self.Set_Token_Value(Buffer.Copy);
+      Self.Set_Token_Value("--" & String'(Buffer.Copy));
       Self.Set_Token_Last(Self.Column-1);
    end Get_Comment;
 
