@@ -186,7 +186,7 @@ private
    procedure Get_Character_Literal
       (Self   : in out Instance; 
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
-      with Pre => Self.Next_In in Strings.Apostrophe;
+      with Pre => Self.Next in Strings.Apostrophe;
    procedure Get_String_Literal
       (Self   : in out Instance; 
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)

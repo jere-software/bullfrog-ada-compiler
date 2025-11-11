@@ -301,7 +301,7 @@ package body Compiler.Lexer is
          Self.Get_Numeric_Literal(Stream);
       elsif Self.Next_In = Quote then
          Self.Get_String_Literal(Stream);
-      elsif Self.Next_in = Apostrophe and then Is_Literal then
+      elsif Self.Next = Apostrophe and then Is_Literal then
          Self.Get_Character_Literal(Stream);
       elsif Is_Delimiter(Self.Next) then -- may find comment
          Self.Get_Delimiter(Stream);
@@ -365,7 +365,7 @@ package body Compiler.Lexer is
       (Self   : in out Instance; 
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
    is 
-      Temp  : Character;
+      Temp  : constant Character     := Self.Peek; -- The expected character
       First : constant Column_Number := Self.Column;
    begin
       
@@ -374,9 +374,7 @@ package body Compiler.Lexer is
          Self.Error("Non graphic character found.  Character literal expected");
       end if;
 
-      Temp := Self.Next;
-
-      Self.Advance(Stream);
+      Self.Advance(Stream); -- Munch the graphic character
       if Self.Next /= Strings.Apostrophe then
          Self.Error("Closing apostrophe not found.  Character literal expected");
       end if;
