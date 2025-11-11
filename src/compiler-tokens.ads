@@ -5,11 +5,13 @@
 -- License, v. 2.0. If a copy of the MPL was not distributed with this
 -- file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+with Compiler.Strings;
+
 -- Provides a tokenized breakdown of all lexical elements.
 -- Note that while identifiers are broken down into keywords,
 -- they are not broken down into attributes, aspects, or
 -- pragmas.
-package Compiler.Tokens with Pure is
+package Compiler.Tokens is
 
    -- Top level token identifier
    type Token_Kind is
@@ -149,5 +151,25 @@ package Compiler.Tokens with Pure is
            Delimiter_Exponent 
          | Keyword_Abs 
          | Keyword_Not;
+
+-- Specialized numeric types for token information
+   type Line_Number is new Positive;
+   type Column_Number is new Positive;
+
+   -- Image functions
+   function Image(Item : Line_Number) return String is
+      (Strings.Image(Integer(Item))) with Inline;
+   function Image(Item : Column_Number) return String is
+      (Strings.Image(Integer(Item))) with Inline;
+
+   -- Core Token type
+   type Token
+      (Kind  : Tokens.Token_Kind := Tokens.Comment) 
+   is record
+      Value  : Strings.Holder := Strings.Empty_Holder;
+      Line   : Line_Number    := 1;
+      First  : Column_Number  := 1;
+      Last   : Column_Number  := 1;
+   end record;
       
 end Compiler.Tokens;

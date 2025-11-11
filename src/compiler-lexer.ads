@@ -20,24 +20,22 @@ package Compiler.Lexer is
    ------------------------------------------------------
 
    -- Specialized numeric types for token information
-   type Line_Number is new Positive;
-   type Column_Number is new Positive;
+   subtype Line_Number   is Tokens.Line_Number;
+   subtype Column_Number is Tokens.Column_Number;
+
+   -- Core token type
+   subtype Token is Tokens.Token;  
+   
+   -- Import all operators
+   use all type Token;
+   use all type Line_Number;
+   use all type Column_Number;
 
    -- Image functions
-   function Image(Item : Line_Number) return String is
-      (Strings.Image(Integer(Item))) with Inline;
-   function Image(Item : Column_Number) return String is
-      (Strings.Image(Integer(Item))) with Inline;
-
-   -- Core Token type
-   type Token
-      (Kind  : Tokens.Token_Kind := Tokens.Comment) 
-   is record
-      Value  : Strings.Holder := Strings.Empty_Holder;
-      Line   : Line_Number    := 1;
-      First  : Column_Number  := 1;
-      Last   : Column_Number  := 1;
-   end record;
+   function Image(Item : Line_Number) return String 
+      renames Tokens.Image;
+   function Image(Item : Column_Number) return String 
+      renames Tokens.Image;
 
    -- Prints the information for the supplied token to STDOUT
    procedure Debug(Self : Token);
