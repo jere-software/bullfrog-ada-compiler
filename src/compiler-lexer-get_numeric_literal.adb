@@ -86,7 +86,7 @@ is
       Append_Next;
    end Set_State_To;
 
-   -- Indicates if this is a range operator instead of a decimal period
+   -- Indicates if this is a range delimiter instead of a decimal period
    function Is_Range return Boolean is (Self.Peek = Period) 
       with Inline, Pre => Self.Next = Period and State = Decimal;
 
