@@ -246,8 +246,6 @@ package body Compiler.Lexer is
       use Strings.Text_IO;
    begin
 
-      << Restart_Location >> -- come back here if ignoring comments
-
       Self.Skip_Whitespace(Stream); 
       if Is_Letter(Self.Next) then
          Self.Get_Identifier(Stream);
@@ -268,7 +266,6 @@ package body Compiler.Lexer is
                Self.Get_Comment(Stream);  -- usually for testing the lexer
             else
                Self.Skip_Comment(Stream); -- Standard mode
-               goto Restart_Location;
             end if;
          end if;
       elsif Self.Is_Running then
