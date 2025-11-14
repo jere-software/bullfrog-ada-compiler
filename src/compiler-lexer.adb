@@ -138,7 +138,10 @@ package body Compiler.Lexer is
       Self.Next_Column := 1;
       Self.State       := Running;
 
-      Self.Peek := Read_Peek;
+      -- Prepopulate first character without using Advance
+      -- so that Line and Column values will be in sync
+      -- with the incoming values once Advance is called
+      Self.Peek := Read_Peek;  
 
    end Initialize;
 
@@ -242,6 +245,9 @@ package body Compiler.Lexer is
 
       use Strings.Text_IO;
    begin
+
+      << Restart_Location >> -- come back here if ignoring comments
+
       Self.Skip_Whitespace(Stream); 
       if Is_Letter(Self.Next) then
          Self.Get_Identifier(Stream);
@@ -262,6 +268,7 @@ package body Compiler.Lexer is
                Self.Get_Comment(Stream);  -- usually for testing the lexer
             else
                Self.Skip_Comment(Stream); -- Standard mode
+               goto Restart_Location;
             end if;
          end if;
       elsif Self.Is_Running then
@@ -392,6 +399,8 @@ package body Compiler.Lexer is
    is 
       use Strings;
 
+      -- Instantiation of generic parser that will get 
+      -- the entire identifier
       procedure Parse is new Generic_Parse_With_Connector
          (Is_Character => Is_Identifier,
           Is_Connector => Is_Punctuation_Connector,
@@ -401,16 +410,19 @@ package body Compiler.Lexer is
 
       use type Tokens.Token_Kind;
       
+      -- Used to find Attribute identifiers
       function Follows_Apostrophe return Boolean is
          (Self.Tokens.Length not in 0 
           and then Self.Token_Kind = Tokens.Delimiter_Apostrophe)
       with Inline;
 
+      -- Used to find pragma identifiers
       function Follows_Pragma return Boolean is
          (Self.Tokens.Length not in 0 
           and then Self.Token_Kind = Tokens.Keyword_Pragma)
       with Inline;
 
+      -- Utility function to parse and return a copy of the result
       function Parse return String is
       begin
          Parse(Self, Stream, Buffer);
@@ -438,6 +450,7 @@ package body Compiler.Lexer is
       (Self   : in out Instance; 
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
    is
+      -- Comments end the end of a line
       function Is_Comment(Item : Character) return Boolean is
          (not Strings.Is_Line_Terminator(Item)) with Inline;
 
@@ -455,7 +468,8 @@ package body Compiler.Lexer is
 
       end if;
 
-      -- Update the existing token
+      -- Update the existing token.  This removes the
+      -- delimiter `--` added by the original Get_Delimiter
       Self.Set_Token_Value(String'(Buffer.Copy));
       Self.Set_Token_Last(Self.Column-1);
    end Get_Comment;
@@ -468,17 +482,24 @@ package body Compiler.Lexer is
       use Strings;
 
       Buffer : Character_Vector;
+
+      -- Strings end with a quote and must contain a graphic character
       function Is_String(Item : Character) return Boolean is
          (Item /= Quote and then Is_Graphic(Item)) with Inline;
+
+      -- Indicates if a graphic value lies between the two quotes.
+      -- Just looking for two side by side quotes isn't enough
+      -- as an escaped quote looks like """"
       function Not_Empty_String return Boolean is
          (Self.Next /= Quote or Self.Peek = Quote) 
           with Inline, Pre => Is_Graphic(Self.Next);
 
+      -- Common error
       Bad_End : constant String := "Unexpected end to string literal";
 
       First : constant Column_Number := Self.Column;
    begin
-      Self.Advance(Stream);  -- Munch quote
+      Self.Advance(Stream);  -- Munch first quote
 
       -- Make sure there is some valid character to check
       if Self.Not_Running or not Is_Graphic(Self.Next) then
@@ -504,7 +525,7 @@ package body Compiler.Lexer is
          Self.Advance(Stream); -- Munch quote
          exit when Self.Next /= Quote;  -- Done unless escaping a quote
 
-         -- Here we had two "" side by side, which is an escaped quote
+         -- Here we had "", which is an escaped quote
          Buffer.Append(Quote); -- Add escaped quote
          Self.Advance(Stream);
 

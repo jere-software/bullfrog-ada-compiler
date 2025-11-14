@@ -79,14 +79,6 @@ package Compiler.Lexer is
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
       with Pre => Self.Is_Running;
 
-   -- Last token info
-   function Token_Kind(Self : Instance) return Tokens.Token_Kind
-      with  Inline, 
-            Pre => Self.All_Tokens.Length not in 0;
-   function Token_Value(Self : Instance) return Strings.String
-      with  Inline, 
-            Pre => Self.All_Tokens.Length not in 0;
-
    -- Returns the current list of tokens found so far
    function All_Tokens(Self : aliased Instance) 
       return not null access constant Token_List
@@ -102,6 +94,14 @@ package Compiler.Lexer is
    Lexical_Error : exception;
 
 private
+
+   -- Last token info
+   function Token_Kind(Self : Instance) return Tokens.Token_Kind
+      with  Inline, 
+            Pre => Self.All_Tokens.Length not in 0;
+   function Token_Value(Self : Instance) return Strings.String
+      with  Inline, 
+            Pre => Self.All_Tokens.Length not in 0;
 
    -- local declaration so all child packages use the same
    -- underlying character type
