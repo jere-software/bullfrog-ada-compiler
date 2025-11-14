@@ -66,19 +66,6 @@ package Compiler.Lexer is
       (Self   : in out Instance; 
        Stream : not null access Ada.Streams.Root_Stream_Type'Class);
 
-   -- Individual operations for getting tokens from a stream one
-   -- by one.  Call Initialize first, then use Is_Running and
-   -- Get_Token to iterate through tokens
-   procedure Initialize -- Resets lexer state
-      (Self   : in out Instance;
-       Stream : not null access Ada.Streams.Root_Stream_Type'Class); 
-   function Is_Running(Self : Instance) return Boolean with Inline;
-   function Not_Running(Self : Instance) return Boolean with Inline;
-   procedure Get_Token
-      (Self   : in out Instance; 
-       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
-      with Pre => Self.Is_Running;
-
    -- Returns the current list of tokens found so far
    function All_Tokens(Self : aliased Instance) 
       return not null access constant Token_List
@@ -102,6 +89,22 @@ private
    function Token_Value(Self : Instance) return Strings.String
       with  Inline, 
             Pre => Self.All_Tokens.Length not in 0;
+
+   --- Intializes the lexer
+   procedure Initialize -- Resets lexer state
+      (Self   : in out Instance;
+       Stream : not null access Ada.Streams.Root_Stream_Type'Class); 
+
+   -- Lexer status
+   function Is_Running(Self : Instance) return Boolean with Inline;
+   function Not_Running(Self : Instance) return Boolean with Inline;
+
+   -- Gets the next token (if available).  Check Is_Running / Not_Running
+   -- to know when to stop calling this
+   procedure Get_Token
+      (Self   : in out Instance; 
+       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
+      with Pre => Self.Is_Running;
 
    -- local declaration so all child packages use the same
    -- underlying character type
@@ -185,8 +188,7 @@ private
        Stream : not null access Ada.Streams.Root_Stream_Type'Class);
    procedure Skip_Whitespace
       (Self   : in out Instance; 
-       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
-      with Pre => Self.Is_Running;
+       Stream : not null access Ada.Streams.Root_Stream_Type'Class);
 
    -- Low level output operations
    procedure Halt(Self : Instance; Message : String)

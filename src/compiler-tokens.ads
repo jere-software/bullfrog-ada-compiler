@@ -15,14 +15,15 @@ package Compiler.Tokens is
 
    -- Top level token identifier
    type Token_Kind is
-      (Identifier,
+      (End_Of_File, -- not a real token, but appended to end of list
+       Identifier,
        Attribute,  -- Subcategory of Identifier
-       Pragma_ID,
+       Pragma_ID,  -- Subcategory of Identifier
        String_Literal,
        Character_Literal,
        Integer_Literal,
        Real_Literal,
-       Comment,
+       Comment, -- Only useful for unit testing, not for production
        Keyword_Begin,
        Keyword_Do,
        Keyword_Goto,

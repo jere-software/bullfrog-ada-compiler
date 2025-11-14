@@ -102,6 +102,13 @@ package body Compiler.Lexer is
          Self.Get_Token(Stream);
       end loop;
 
+      Self.Add_Token
+         (Kind   => Tokens.End_Of_File,
+          Value  => "",
+          Line   => Self.Line,
+          First  => Self.Column,
+          Last   => Self.Column);
+
    end Run;
 
    procedure Enable_Comments(Self : in out Instance) is
@@ -246,6 +253,8 @@ package body Compiler.Lexer is
       use Strings.Text_IO;
    begin
 
+      << Restart_Location >> -- Place to return to if skipping comments
+
       Self.Skip_Whitespace(Stream); 
       if Is_Letter(Self.Next) then
          Self.Get_Identifier(Stream);
@@ -266,6 +275,7 @@ package body Compiler.Lexer is
                Self.Get_Comment(Stream);  -- usually for testing the lexer
             else
                Self.Skip_Comment(Stream); -- Standard mode
+               goto Restart_Location;
             end if;
          end if;
       elsif Self.Is_Running then
