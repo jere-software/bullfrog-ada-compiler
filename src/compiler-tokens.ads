@@ -15,7 +15,7 @@ package Compiler.Tokens is
 
    -- Top level token identifier
    type Token_Kind is
-      (End_Of_File, -- not a real token, but appended to end of list
+      (End_Of_Stream, -- not a real token, but appended to end of list
        Identifier,
        Attribute,  -- Subcategory of Identifier
        Pragma_ID,  -- Subcategory of Identifier

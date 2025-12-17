@@ -94,20 +94,21 @@ package body Compiler.Lexer is
    procedure Run
       (Self   : in out Instance; 
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
-   is begin
+   is 
+      Count : Natural := 0;
+   begin
       
       Self.Initialize(Stream);
 
       while Self.Is_Running loop
-         Self.Get_Token(Stream);
+         Self.Tokens.Append(Self.Get_Next_Token(Stream));
       end loop;
 
-      Self.Add_Token
-         (Kind   => Tokens.End_Of_File,
-          Value  => "",
-          Line   => Self.Line,
-          First  => Self.Column,
-          Last   => Self.Column);
+      -- If the last token isn't End_Of_Stream, then 
+      -- add that
+      if Self.Last_Token not in Tokens.End_Of_Stream then
+         Self.Tokens.Append(Self.End_Of_Stream);
+      end if;
 
    end Run;
 
@@ -149,6 +150,7 @@ package body Compiler.Lexer is
       -- so that Line and Column values will be in sync
       -- with the incoming values once Advance is called
       Self.Peek := Read_Peek;  
+      Self.Advance(Stream);
 
    end Initialize;
 
@@ -190,7 +192,7 @@ package body Compiler.Lexer is
             -- lexer state for next call
             if not Read(Self.Peek) then
                Self.Peek  := Nul;
-               Self.State := End_Of_File;
+               Self.State := End_Of_Stream;
             end if;
 
             --Self.Debug;
@@ -203,7 +205,7 @@ package body Compiler.Lexer is
             else
                Self.Peek_Column := @ + 1;
             end if;
-               when End_Of_File =>
+               when End_Of_Stream =>
                   Self.State := Off;
             end case;
 
@@ -293,10 +295,7 @@ package body Compiler.Lexer is
    begin
       while Self.Is_Running and Is_Comment(Self.Next) loop
          Self.Advance(Stream);
-      end loop;
-
-      -- Remove the token since we aren't keeping comments
-      Self.Tokens.Delete_Last;  
+      end loop; 
    end Skip_Comment;
 
    -- Temporary dynamic character buffers for reading strings of
@@ -550,7 +549,7 @@ package body Compiler.Lexer is
    procedure Get_Numeric_Literal
       (Self   : in out Instance; 
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
-      is separate;
+      is null;
 
    procedure Get_Delimiter
       (Self   : in out Instance; 
@@ -652,8 +651,8 @@ package body Compiler.Lexer is
 
    function End_Of_Stream(Self : in out Instance) return Token is
    begin
-      Self.Last_Token := Tokens.End_Of_File;
-      return (Tokens.End_Of_File, +"", Self.Line, Self.Column, Self.Column);
+      Self.Last_Token := Tokens.End_Of_Stream;
+      return (Tokens.End_Of_Stream, +"", Self.Line, Self.Column, Self.Column);
    end End_Of_Stream;
 
    function Get_Next_Token
@@ -762,7 +761,7 @@ package body Compiler.Lexer is
          when others => 
             if Self.Is_Running then
                Self.Error("Unexpected input to lexer");
-            elsif Self.Last_Token in Tokens.End_Of_File then
+            elsif Self.Last_Token in Tokens.End_Of_Stream then
                raise Program_Error with "Invalid lexer state";
             else
                return Self.End_Of_Stream;
@@ -811,7 +810,7 @@ package body Compiler.Lexer is
    function Get_Numeric_Literal
       (Self   : in out Instance;
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
-       return Token is (Self.End_Of_Stream);
+       return Token is separate;
        
    function Get_String_Literal
       (Self   : in out Instance;

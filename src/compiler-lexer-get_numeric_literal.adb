@@ -7,9 +7,10 @@
 
 -- Scans the stream for a numeric literal (real or integer)
 separate (Compiler.Lexer) 
-procedure Get_Numeric_Literal
+function Get_Numeric_Literal
    (Self   : in out Instance; 
     Stream : not null access Ada.Streams.Root_Stream_Type'Class)
+    return Token
 is 
 
    use Strings;
@@ -218,16 +219,10 @@ begin
 
    -- Ensure the end of the literal is valid
    Validate_End_Of_Literal;
-   
-   Self.Tokens.Append(Token'
-      (Kind  => 
-         (if Is_Real then 
-            Tokens.Real_Literal 
-          else 
-            Tokens.Integer_Literal),
-       Value => Strings.New_String(Buffer.Copy),
-       Line  => Self.Line,
-       First => First,
-       Last  => Self.Column - 1));
+   if Is_Real then
+      return Self.Make(Tokens.Real_Literal, Buffer.Copy, First);
+   else
+      return Self.Make(Tokens.Integer_Literal, Buffer.Copy, First);
+   end if;
    
 end Get_Numeric_Literal;

@@ -120,12 +120,12 @@ private
    type Status is 
       (Off,          -- Finished
        Running,      -- Looking for characters
-       End_Of_File); -- Last character found
+       End_Of_Stream); -- Last character found
 
    type Instance is new Ada.Finalization.Limited_Controlled with record
       Next        : Character          := Strings.Nul;  -- Next character to process
       Peek        : Character          := Strings.Nul;  -- Future character to process
-      Last_Token  : Tokens.Token_Kind  := Tokens.End_Of_File;
+      Last_Token  : Tokens.Token_Kind  := Tokens.End_Of_Stream;
       State       : Lexer.Status       := Off;
       Tokens      : aliased Token_List := Empty_Token_List;
       Line        : Line_Number        := 1;
@@ -161,7 +161,7 @@ private
    procedure Skip_Comment -- Usually called after Get_Delimiter
       (Self   : in out Instance; 
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
-      with Pre => Self.Token_Kind in Tokens.Comment;
+      with Pre => Self.Next in Strings.Minus and Self.Peek in Strings.Minus;
    procedure Get_Identifier -- Can return Attribute or Pragma_ID tokens
       (Self   : in out Instance; 
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
@@ -210,9 +210,14 @@ private
        return Token;
    function End_Of_Stream(Self : in out Instance) return Token
       with Pre  =>    Self.Not_Running 
-                  and Self.Last_Token not in Tokens.End_Of_File,
-           Post => Self.Last_Token in Tokens.End_Of_File;
+                  and Self.Last_Token not in Tokens.End_Of_Stream,
+           Post => Self.Last_Token in Tokens.End_Of_Stream;
 
+   function Get_Next_Token
+      (Self   : in out Instance;
+       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
+       return Token
+      with Pre => Self.Is_Running;
    function Get_Identifier
       (Self   : in out Instance;
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
