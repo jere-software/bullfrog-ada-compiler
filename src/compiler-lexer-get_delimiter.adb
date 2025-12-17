@@ -5,7 +5,7 @@
 -- License, v. 2.0. If a copy of the MPL was not distributed with this
 -- file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
--- Parses the stream for an delimiter or a comment
+-- Scans the stream for an delimiter or a comment
 separate (Compiler.Lexer)
 procedure Get_Delimiter
    (Self   : in out Instance; 

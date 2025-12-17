@@ -55,6 +55,7 @@ package Compiler.Strings is
 
    -- Local redefines
    Space             : constant Character := ' ';
+   Nul               : constant Character := Latin_1.Nul;
    Tab               : constant Character := Latin_1.HT;
    Carriage_Return   : constant Character := Latin_1.CR;
    New_Line          : constant Character := Latin_1.LF;
@@ -194,6 +195,8 @@ package Compiler.Strings is
    function Is_Delimiter(Character : Strings.Character) return Boolean is
       (Character in Delimiter_1_Character | Delimiter_2_Character)
       with Static, Inline;
+   function Is_String(Item : Character) return Boolean is
+      (Item /= Quote and then Is_Graphic(Item)) with Inline;
 
    -- Utility operations for getting input data
    function Stream(File : File_Type) return Stream_Access

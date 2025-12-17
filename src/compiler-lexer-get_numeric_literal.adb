@@ -5,7 +5,7 @@
 -- License, v. 2.0. If a copy of the MPL was not distributed with this
 -- file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
--- Parses the stream for a numeric literal (real or integer)
+-- Scans the stream for a numeric literal (real or integer)
 separate (Compiler.Lexer) 
 procedure Get_Numeric_Literal
    (Self   : in out Instance; 
@@ -15,22 +15,22 @@ is
    use Strings;
 
    -- Curren number parsing state
-   type Parse_State is (Decimal, Decimal_Real, Based, Based_Real, Exponent);
+   type Scan_State is (Decimal, Decimal_Real, Based, Based_Real, Exponent);
 
    Buffer  : Character_Vector       := Empty(Default_Character_Vector_Size);
    First   : constant Column_Number := Self.Column;
    Base    : Number_Base            := 10;
    Is_Real : Boolean                := False;
-   State   : Parse_State            := Decimal;
+   State   : Scan_State            := Decimal;
 
    -- Need a one parameter version that still accounts for 
-   -- the current base.  This will be supplied to Generic_Parse
+   -- the current base.  This will be supplied to Generic_Scan
    function Is_Numeral(Item : Character) return Boolean is
       (Is_Numeral(Item, Base));
 
-   -- Numeral parser.  Will handle digits and underlines, but
+   -- Numeral scanner.  Will handle digits and underlines, but
    -- will not handle separators
-   procedure Parse_Numeral is new Generic_Parse_With_Connector
+   procedure Scan_Numeral is new Generic_Scan_With_Connector
       (Is_Character => Is_Numeral,
        Is_Connector => Is_Underline,
        Target_Name  => "Numeric literal");
@@ -56,14 +56,14 @@ is
 
    -- State transition logic.  Updates local variables based on
    -- the New_State value supplied.  It will munch any separators.
-   procedure Set_State_To(New_State : Parse_State)
+   procedure Set_State_To(New_State : Scan_State)
       with Pre => (case State is
                      when Decimal      => New_State in Decimal_Real | Based | Exponent,
                      when Decimal_Real => New_State in Exponent,
                      when Based        => New_State in Based_Real | Exponent,
                      when Based_Real   => New_State in Exponent,
                      when Exponent     => False); 
-   procedure Set_State_To(New_State : Parse_State) is
+   procedure Set_State_To(New_State : Scan_State) is
    begin
       case New_State is
          when Decimal_Real => Is_Real := True;
@@ -79,7 +79,7 @@ is
                when others => null;
             end case;
          when others => raise Program_Error with 
-            "Invalid parse state for numeric literal";
+            "Invalid scan state for numeric literal";
       end case;
 
       State := New_State;
@@ -114,7 +114,7 @@ is
    Base_10_Numeral   : constant String := "Decimal literal must be expressed in base 10";
    Not_Separated     : constant String := "Literals must be separated by whitespace or a delimiter";
    
-   -- Ensures the next character is a valid numeral to parse
+   -- Ensures the next character is a valid numeral to scan
    procedure Validate_Has_Numeral with Pre => State not in Decimal;
    procedure Validate_Has_Numeral is
    begin
@@ -176,9 +176,9 @@ begin
    -- numeral # numeral . numeral # E|e [+|-] numeral
    loop
       -- Get full numeral, including underlines, but not separators
-      Parse_Numeral(Self, Stream, Buffer);
+      Scan_Numeral(Self, Stream, Buffer);
 
-      -- Parse any numeral separators
+      -- Scan any numeral separators
       case State is
          when Decimal =>
             case Self.Next is
@@ -210,7 +210,7 @@ begin
             exit;
       end case;
 
-      -- Ensure there is a numeral to parse before
+      -- Ensure there is a numeral to scan before
       -- continuing the loop
       Validate_Has_Numeral;
 

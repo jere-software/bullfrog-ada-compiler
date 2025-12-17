@@ -123,14 +123,15 @@ private
        End_Of_File); -- Last character found
 
    type Instance is new Ada.Finalization.Limited_Controlled with record
-      Next        : Character          := Strings.Space;  -- Next character to process
-      Peek        : Character          := Strings.Space;  -- Future character to process
+      Next        : Character          := Strings.Nul;  -- Next character to process
+      Peek        : Character          := Strings.Nul;  -- Future character to process
+      Last_Token  : Tokens.Token_Kind  := Tokens.End_Of_File;
       State       : Lexer.Status       := Off;
       Tokens      : aliased Token_List := Empty_Token_List;
       Line        : Line_Number        := 1;
       Column      : Column_Number      := 1;
-      Next_Line   : Line_Number        := 1;
-      Next_Column : Column_Number      := 1;
+      Peek_Line   : Line_Number        := 1;
+      Peek_Column : Column_Number      := 1;
       Comments_On : Boolean            := False;
    end record;
 
@@ -201,4 +202,42 @@ private
        Line    : Line_Number; 
        Column  : Column_Number) with Inline, No_Return;
 
+   function Make
+      (Self  : in out Instance;
+       Kind  : Tokens.Token_Kind; 
+       Value : String; 
+       First : Column_Number) 
+       return Token;
+   function End_Of_Stream(Self : in out Instance) return Token
+      with Pre  =>    Self.Not_Running 
+                  and Self.Last_Token not in Tokens.End_Of_File,
+           Post => Self.Last_Token in Tokens.End_Of_File;
+
+   function Get_Identifier
+      (Self   : in out Instance;
+       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
+       return Token
+      with Pre => Self.Is_Running and Strings.Is_Letter(Self.Next);
+   function Get_Numeric_Literal
+      (Self   : in out Instance;
+       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
+       return Token
+      with Pre => Self.Is_Running and Strings.Is_Numeral(Self.Next);
+   function Get_String_Literal
+      (Self   : in out Instance;
+       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
+       return Token
+      with Pre => Self.Is_Running and Self.Next in Strings.Quote;
+   function Get_Character_Or_Apostrophe
+      (Self   : in out Instance;
+       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
+       return Token
+      with Pre => Self.Is_Running and Self.Next = Strings.Apostrophe;
+   function Get_Comment
+      (Self   : in out Instance;
+       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
+       return Token
+      with Pre =>  Self.Is_Running 
+               and Self.Next = Strings.Minus 
+               and Self.Peek = Strings.Minus;
 end Compiler.Lexer;
