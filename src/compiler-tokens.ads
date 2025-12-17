@@ -6,6 +6,7 @@
 -- file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 with Compiler.Strings;
+with Ada.Containers.Vectors;
 
 -- Provides a tokenized breakdown of all lexical elements.
 -- Note that while identifiers are broken down into keywords,
@@ -172,5 +173,15 @@ package Compiler.Tokens is
       First  : Column_Number  := 1;
       Last   : Column_Number  := 1;
    end record;
+
+   ------------------------------------------------------
+   -------------------- Token Lists ---------------------
+   ------------------------------------------------------
+
+   package Vectors is new Ada.Containers.Vectors(Positive, Token);
+
+   -- Core token list type
+   subtype Token_List is Vectors.Vector;
+   Empty_Token_List : constant Token_List := Vectors.Empty_Vector;
       
 end Compiler.Tokens;

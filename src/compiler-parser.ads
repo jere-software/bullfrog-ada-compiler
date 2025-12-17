@@ -39,8 +39,8 @@ private
 
    -- Local type rename
    subtype Lexer_Token   is Compiler.Lexer.Token;
-   subtype Line_Number   is Compiler.Lexer.Line_Number;
-   subtype Column_Number is Compiler.Lexer.Column_Number;
+   subtype Line_Number   is Compiler.Tokens.Line_Number;
+   subtype Column_Number is Compiler.Tokens.Column_Number;
 
    use all type Line_Number;
    use all type Column_Number;
