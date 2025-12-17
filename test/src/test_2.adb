@@ -32,11 +32,11 @@ package body Test_2 is
 
    function Tokenize_File(Lexer : in out Test_2.Lexer; Filename : String) return Boolean is 
 
-      Line  : Compiler.Lexer.Line_Number   := 1;
-      First : Compiler.Lexer.Column_Number := 1;
+      Line  : Compiler.Tokens.Line_Number   := 1;
+      First : Compiler.Tokens.Column_Number := 1;
 
-      use type Compiler.Lexer.Line_Number;
-      use type Compiler.Lexer.Column_Number;
+      use type Compiler.Tokens.Line_Number;
+      use type Compiler.Tokens.Column_Number;
 
       File : File_Type;
 
