@@ -146,7 +146,9 @@ private
       (Self   : in out Instance;
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
        return Token
-      with Pre => Self.Is_Running;
+      with Pre  => Self.Last_Token not in Tokens.End_Of_Stream or Self.Is_Running,
+           Post => Self.Last_Token not in Tokens.End_Of_Stream or Self.Not_Running
+                or Get_Next_Token'Result.Kind in Tokens.Comment;
    function Get_Identifier
       (Self   : in out Instance;
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)

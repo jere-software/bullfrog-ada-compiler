@@ -70,16 +70,17 @@ package body Compiler.Lexer is
       
       Self.Initialize(Stream);
 
-      while Self.Is_Running loop
+      pragma Assert(Self.Is_Running);  -- Lexer should be running here
+
+      -- Keep getting tokens until End_Of_Stream token encountered
+      loop
+         Count := Count + 1;
          Self.Tokens.Append(Self.Get_Next_Token(Stream));
+         exit when Self.Not_Running and then Self.Last_Token in Tokens.End_Of_Stream;
       end loop;
 
-      -- If the last token isn't End_Of_Stream, then 
-      -- add that
-      if Self.Last_Token not in Tokens.End_Of_Stream then
-         Self.Tokens.Append(Self.End_Of_Stream);
-      end if;
-
+      pragma Assert(Self.Not_Running);  -- Lexer should be finished here
+      
    end Run;
 
    procedure Enable_Comments(Self : in out Instance) is
