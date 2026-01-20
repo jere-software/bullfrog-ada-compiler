@@ -119,15 +119,15 @@ private
       with Pre => Self.Next in Strings.Minus and Self.Peek in Strings.Minus;
 
    -- Low level output operations
-   procedure Halt(Self : Instance; Message : String)
+   procedure Halt(Message : String)
       with No_Return;
    procedure Error(Self : Instance; Message : String) 
       with Inline, No_Return;
    procedure Error
-      (Self    : Instance; 
-       Message : String; 
+      (Message : String; 
        Line    : Line_Number; 
-       Column  : Column_Number) with Inline, No_Return;
+       Column  : Column_Number) 
+      with Inline, No_Return;
 
    -- Token creation
    function Make

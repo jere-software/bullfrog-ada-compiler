@@ -80,7 +80,7 @@ package body Compiler.Lexer is
       end loop;
 
       pragma Assert(Self.Not_Running);  -- Lexer should be finished here
-      
+
    end Run;
 
    procedure Enable_Comments(Self : in out Instance) is
@@ -615,7 +615,7 @@ package body Compiler.Lexer is
    -------------- Lexer Output Operations ---------------
    ------------------------------------------------------
 
-   procedure Halt(Self : Instance; Message : String) is
+   procedure Halt(Message : String) is
    begin
       Strings.Text_IO.Put_Line(Message);
       raise Lexical_Error;
@@ -623,18 +623,17 @@ package body Compiler.Lexer is
 
    procedure Error(Self : Instance; Message : String) is
    begin
-      Self.Error(Message, Self.Line, Self.Column);
+      Error(Message, Self.Line, Self.Column);
    end Error;
 
    procedure Error
-      (Self    : Instance; 
-       Message : String; 
+      (Message : String; 
        Line    : Line_Number; 
        Column  : Column_Number)
    is 
       use Compiler.Tokens;
    begin
-      Self.Halt
+      Halt
          ("Lexical Error @ "
           & Image(Line) & ":" & Image(Column)
           & " => " & Message);
