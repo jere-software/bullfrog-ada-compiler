@@ -89,8 +89,8 @@ private
 
    -- Lexer state type
    type Status is 
-      (Off,          -- Finished
-       Running,      -- Looking for characters
+      (Off,            -- Finished
+       Running,        -- Looking for characters
        End_Of_Stream); -- Last character found
 
    type Instance is new Ada.Finalization.Limited_Controlled with record
@@ -129,6 +129,7 @@ private
        Line    : Line_Number; 
        Column  : Column_Number) with Inline, No_Return;
 
+   -- Token creation
    function Make
       (Self  : in out Instance;
        Kind  : Tokens.Token_Kind; 
@@ -140,6 +141,7 @@ private
                   and Self.Last_Token not in Tokens.End_Of_Stream,
            Post => Self.Last_Token in Tokens.End_Of_Stream;
 
+   -- Tokenization
    function Get_Next_Token
       (Self   : in out Instance;
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
