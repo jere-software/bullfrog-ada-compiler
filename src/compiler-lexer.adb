@@ -6,6 +6,7 @@
 -- file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 with Compiler.Keywords;
+with Ada.Containers.Vectors;
 
 package body Compiler.Lexer is
 
@@ -16,6 +17,7 @@ package body Compiler.Lexer is
    procedure Debug(Self : Token) is
       use Strings.Text_IO;
       use Strings;
+      use Tokens;
    begin
       Put_Line(To_String(Self.Kind'Image)
          & ": (" 
@@ -29,45 +31,8 @@ package body Compiler.Lexer is
    end Debug;
 
    ------------------------------------------------------
-   --------------- Lexar Token Operations ---------------
+   --------------- Lexer Token Operations ---------------
    ------------------------------------------------------
-
-   procedure Add_Token
-      (Self  : in out Instance; 
-       Kind  : Tokens.Token_Kind;
-       Value : String;
-       Line  : Positive;
-       First : Positive;
-       Last  : Positive) 
-   is begin
-      Self.Tokens.Append(Token'
-         (Kind  => Kind,
-          Value => Strings.New_String(Value),
-          Line  => Line,
-          First => First,
-          Last  => Last));
-   end Add_Token;
-
-   procedure Set_Token_Value(Self : in out Instance; Value : String) is
-   begin
-      Self.Tokens(Self.Tokens.Last_Index).Value.Set(Value);
-   end Set_Token_Value;
-
-   procedure Set_Token_Last(Self : in out Instance; Value : Positive) is
-   begin
-      Self.Tokens(Self.Tokens.Last_Index).Last := Value;
-   end Set_Token_Last;
-
-   function Token_Kind(Self : Instance) return Tokens.Token_Kind is
-      (Self.Tokens(Self.Tokens.Last_Index).Kind);
-   function Token_Value(Self : Instance) return Strings.String is
-      (Self.Tokens(Self.Tokens.Last_Index).Value.Get);
-   function Token_Line(Self : Instance) return Positive is
-      (Self.Tokens(Self.Tokens.Last_Index).Line);
-   function Token_First(Self : Instance) return Positive is
-      (Self.Tokens(Self.Tokens.Last_Index).First);
-   function Token_Last(Self : Instance) return Positive is
-      (Self.Tokens(Self.Tokens.Last_Index).Last);
 
    function All_Tokens(Self : aliased Instance) 
       return not null access constant Token_List 
@@ -99,13 +64,21 @@ package body Compiler.Lexer is
    procedure Run
       (Self   : in out Instance; 
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
-   is begin
+   is 
+      Count : Natural := 0;
+   begin
       
-      Self.Initialize;
+      Self.Initialize(Stream);
 
       while Self.Is_Running loop
-         Self.Get_Token(Stream);
+         Self.Tokens.Append(Self.Get_Next_Token(Stream));
       end loop;
+
+      -- If the last token isn't End_Of_Stream, then 
+      -- add that
+      if Self.Last_Token not in Tokens.End_Of_Stream then
+         Self.Tokens.Append(Self.End_Of_Stream);
+      end if;
 
    end Run;
 
@@ -115,55 +88,107 @@ package body Compiler.Lexer is
    end Enable_Comments;
 
    function Is_Running(Self : Instance) return Boolean is
-      (Self.State /= Idle);
+      (Self.State /= Off);
 
-   procedure Initialize(Self : in out Instance) is
+   function Not_Running(Self : Instance) return Boolean is
+      (Self.State = Off);
+
+   procedure Initialize
+      (Self   : in out Instance;
+       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
+   is 
+      function Read_Peek return Character is
+      begin
+         return Result : Character
+         do
+            Character'Read(Stream, Result);
+         end return;
+      exception   
+         when others => Self.Error("Unexpected end of file");
+      end Read_Peek;
    begin
-      Self.Tokens      := Empty_Token_List;
-      Self.Next_In     := Strings.Space;
-      Self.Last_In     := Strings.Space;
+      Self.Tokens      := Tokens.Empty_Token_List;
+      Self.Next        := Strings.Nul;
+      Self.Peek        := Strings.Nul;
       Self.Line        := 1;
       Self.Column      := 1;
-      Self.Next_Line   := 1;
-      Self.Next_Column := 1;
+      Self.Peek_Line   := 1;
+      Self.Peek_Column := 1;
       Self.State       := Running;
+
+      -- Prepopulate first character without using Advance
+      -- so that Line and Column values will be in sync
+      -- with the incoming values once Advance is called
+      Self.Peek := Read_Peek;  
+      Self.Advance(Stream); -- Pushes Peek into Next
+
    end Initialize;
 
-   procedure Get_Character
-      (Self   : in out Instance; 
+   procedure Advance
+      (Self   : in out Instance;
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
-   is
-      package Text_IO renames Strings.Text_IO;
-      function Already_Found return Boolean is
-         (Self.Last_In = Strings.Carriage_Return and Self.Next_In = Strings.New_Line)
-      with Inline;
-   begin
-      Self.Last_In := Self.Next_In;
-      Self.Line    := Self.Next_Line;
-      Self.Column  := Self.Next_Column;
-      Character'Read(Stream, Self.Next_In);
-      
-      --Self.Debug;
+   is 
+      use Strings;
 
-      if Strings.Is_Newline(Self.Next_In) then
-         if not Already_Found then
-            Self.Next_Line   := Self.Next_Line + 1;
-            Self.Next_Column := 1;
-         end if;
-      else
-         Self.Next_Column := Self.Next_Column + 1;
-      end if;
+      -- Determine Peek_Line should be incremented
+      function Is_Newline return Boolean is
+         (Is_Line_Terminator(Self.Next)
+          and then    (Self.Next /= Carriage_Return
+               or else Self.Peek /= New_Line)) with Inline;
+
+      -- Attempts to read the next character from a stream
+      function Read(Item : out Character) return Boolean is
+      begin
+         Character'Read(Stream, Item);
+         return True;
+      exception
+         when others => return False;
+      end Read;
+
+   begin
+
+      -- Update "Next" parameters
+      Self.Next    := Self.Peek;
+      Self.Line    := Self.Peek_Line;
+      Self.Column  := Self.Peek_Column;
+
+      case Self.State is
+         when Off =>
+            Self.Error("Unexpected end of file");
+         when Running =>
+
+            -- Try to read in character.  If end of
+            -- stream, then set to space and update
+            -- lexer state for next call
+            if not Read(Self.Peek) then
+               Self.Peek  := Nul;
+               Self.State := End_Of_Stream;
+            end if;
+
+            --Self.Debug;
+
+            -- Calculate next line and column
+            -- to match location of Peek character
+            if Is_Newline then
+               Self.Peek_Line   := @ + 1;
+               Self.Peek_Column := 1;
+            else
+               Self.Peek_Column := @ + 1;
+            end if;
+               when End_Of_Stream =>
+                  Self.State := Off;
+            end case;
 
    exception
-      when others => 
-         case Self.State is
-            when Idle => raise;
-            when others => 
-               Self.State   := Idle;
-               Self.Next_In := Strings.Space;
-               --Self.Debug;
-         end case;
-   end Get_Character;
+      -- Should only get constraint error from calculations
+      -- of Peek_Line and Peek_Column
+      when Constraint_Error =>
+         if Is_Newline then
+            Self.Error("Unable to tokenize: Too many lines in file");
+         else 
+            Self.Error("Unable to tokenize: Too many columns in line");
+         end if;
+   end Advance;
 
    procedure Skip_Whitespace
       (Self   : in out Instance; 
@@ -171,280 +196,419 @@ package body Compiler.Lexer is
    is
       use Strings;
    begin
-      while Self.Is_Running and Is_Space(Self.Next_In) loop
-         Self.Get_Character(Stream);
+      while Self.Is_Running and Is_Whitespace(Self.Next) loop
+         Self.Advance(Stream);
       end loop;
    end Skip_Whitespace;
-
-   ------------------------------------------------------
-   ------------- Tokenization Declarations --------------
-   ------------------------------------------------------
-
-   -- Used for recursive operations.  Should be chosen such that
-   -- recursion rarely every occurs.
-   Default_String_Length : constant := 200;
-
-   ------------------------------------------------------
-   ----------- Lexer Tokenization Operations ------------
-   ------------------------------------------------------
-   
-   procedure Get_Token
-      (Self   : in out Instance; 
-       Stream : not null access Ada.Streams.Root_Stream_Type'Class) 
-   is
-      use Strings;
-      use Tokens;
-
-      use type Ada.Containers.Count_Type;
-      function Is_Literal return Boolean is
-         (        Self.Tokens.Length = 0 
-          or else Self.Token_Kind not in 
-              Identifier 
-            | Attribute
-            | Keyword_All 
-            | Operator_Close_Parenthesis
-            | Operator_Close_Bracket);
-   begin
-      Self.Skip_Whitespace(Stream);
-      if Is_Alpha(Self.Next_In) then
-         Self.Get_Identifier(Stream);
-      elsif Is_Digit(Self.Next_In) then -- may find range operator
-         Self.Get_Numeric_Literal(Stream);
-      elsif Self.Next_In = Quote then
-         Self.Get_String_Literal(Stream);
-      elsif Self.Next_in = Apostrophe and then Is_Literal then
-         Self.Get_Character_Literal(Stream);
-      elsif Is_Operator(Self.Next_In) then -- may find comment
-         Self.Get_Operator(Stream);
-
-         -- if the operator ended up being a comment
-         -- instead, then read the rest of the line
-         -- as a comment and update the token
-         if Self.Token_Kind = Tokens.Comment then
-            if Self.Comments_On then
-               Self.Get_Comment(Stream);  -- usually for testing the lexer
-            else
-               Self.Skip_Comment(Stream); -- Standard mode
-            end if;
-         end if;
-      elsif Self.Is_Running then
-         Self.Error("Expected a valid token");
-      end if;
-
-   end Get_Token;
-
-   procedure Get_Comment
-      (Self   : in out Instance; 
-       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
-   is
-      function Get_Comment return String is
-         Result : String(1..Default_String_Length);
-         Index : Positive := 1;
-      begin
-         while Self.Is_Running and not Strings.Is_Newline(Self.Next_In)  loop
-            Result(Index) := Self.Next_In;
-            Self.Get_Character(Stream);
-            if Index = Default_String_Length then
-               return Result & Get_Comment;
-            else
-               Index := Index + 1;
-            end if;
-         end loop;
-         return Result(1..Natural(Index)-1);
-      end Get_Comment;
-   begin
-      Self.Set_Token_Value(Get_Comment);
-      Self.Set_Token_Last(Self.Column-1);
-   end Get_Comment;
 
    procedure Skip_Comment
       (Self   : in out Instance; 
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
-   is begin
-      while Self.Is_Running and not Strings.Is_Newline(Self.Next_In) loop
-         Self.Get_Character(Stream);
-      end loop;
-      Self.Tokens.Delete_Last;  -- Remove the token since we aren't keeping comments
+   is 
+      function Is_Comment(Item : Character) return Boolean is
+         (not Strings.Is_Line_Terminator(Item)) with Inline;
+   begin
+      while Self.Is_Running and Is_Comment(Self.Next) loop
+         Self.Advance(Stream);
+      end loop; 
    end Skip_Comment;
 
-   procedure Get_Identifier
-      (Self   : in out Instance; 
-       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
-   is
+   -------------------------------------------------------
+   -------- Generic Scanning Types and Operations --------
+   -------------------------------------------------------
 
-      use Strings;
+   -- Temporary dynamic character buffers for reading strings of
+   -- unknown length from the input stream
+   package Character_Vectors is new Ada.Containers.Vectors(Positive, Character);
+   type Character_Vector is new Character_Vectors.Vector with null record;
 
-      Line  : constant Positive := Self.Line;
-      First : constant Positive := Self.Column;
-      Last  :          Positive := Self.Column;
-
-      function Get_Identifier return String is
-         Temp : String(1..Default_String_Length);
-      begin
-         for Index in Temp'Range loop
-            if Is_Name(Self.Next_In) then
-               if          Self.Next_In = Strings.Underscore 
-                  and then Self.Last_In = Self.Next_In 
-               then
-                  Self.Error("Double underscore found, single underscore expected");
-               end if;
-               Temp(Index) := Self.Next_In;
-               Last := Self.Column;
-               Self.Get_Character(Stream);
-            else
-               if Self.Last_In = Strings.Underscore then
-                  Self.Error("Name ends in underscore, alphanumeric expected");
-               end if;
-               return Temp(1..Index-1);
-            end if;
-         end loop;
-         return Temp & Get_Identifier;
-      end Get_Identifier;
-
-      Result : constant String := Get_Identifier;
-
-      use type Tokens.Token_Kind;
-      
-      function Follows_Apostrophe return Boolean is
-         (Self.Tokens.Length not in 0 
-          and then Self.Token_Kind = Tokens.Operator_Apostrophe)
-      with Inline;
-
-      function Follows_Pragma return Boolean is
-         (Self.Tokens.Length not in 0 
-          and then Self.Token_Kind = Tokens.Keyword_Pragma)
-      with Inline;
-
+   -- Generates a string copy of the character buffer data
+   function Copy(Buffer : Character_Vector) return String is
    begin
-      Self.Tokens.Append(Token'
-         (Kind  => (if Follows_Apostrophe then
-                       Tokens.Attribute
-                    elsif Follows_Pragma then
-                       Tokens.Pragma_ID
-                    else
-                       Keywords.Token_Kind(Result)),
-          Value => Strings.New_String(Result),
-          Line  => Line,
-          First => First,
-          Last  => Last));
-   end Get_Identifier;
-
-   procedure Get_Operator
-      (Self   : in out Instance; 
-       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
-      is separate;
-
-   procedure Get_Numeric_Literal
-      (Self   : in out Instance; 
-       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
-      is separate;
-
-   procedure Get_Character_Literal
-      (Self   : in out Instance; 
-       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
-   is 
-      Temp : Character;
-      First : constant Positive := Self.Column;
-   begin
-      
-      Self.Get_Character(Stream); -- Munch apostrophe
-      if not Strings.Is_Graphic(Self.Next_In) then
-         Self.Error("Non graphic character found.  Character literal expected");
-      end if;
-
-      Temp := Self.Next_In;
-
-      Self.Get_Character(Stream);
-      if Self.Next_In /= Strings.Apostrophe then
-         Self.Error("Closing apostrophe not found.  Character literal expected");
-      end if;
-
-      Self.Add_Token
-         (Kind  => Tokens.Character_Literal,
-          Value => "" & Temp,
-          Line  => Self.Line,
-          First => First,
-          Last  => First + 2);  -- character literals always 3 characters long
-
-      Self.Get_Character(Stream); -- Munch the apostrophe
-
-   end Get_Character_Literal;
-
-   procedure Get_String_Literal
-      (Self   : in out Instance; 
-       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
-   is
-
-      First : constant Positive := Self.Column;
-
-      Quote_Found : Boolean := False;
-
-      function Get_String return String is
-         Result : String(1..Default_String_Length);
-         Index  : Positive := 1;
-      begin
-
-         -- Loop while graphics characters are coming in
-         while Self.Is_Running and Strings.Is_Graphic(Self.Next_In) loop
-
-            -- See if character is quote or not
-            if Self.Next_In in Strings.Quote then
-
-               -- Found a quote, so toggle found state
-               Quote_Found := not Quote_Found;  -- toggle
-
-               -- If still looking for closing quote, then 
-               -- save the value and move on
-               if not Quote_Found then
-                  Result(Index) := Self.Next_In;
-                  if Index = Default_String_Length then
-                     Self.Get_Character(Stream);
-                     return Result & Get_String;
-                  else
-                     Index := Index + 1;
-                  end if;
-               end if;
-
-            elsif Quote_Found then
-               -- Not a quote, but last character was a quote,
-               -- so we are done
-               return Result(1..Natural(Index)-1);
-            else
-               -- Not a quote and last character was not a quote,
-               -- so save the value and move on
-               Result(Index) := Self.Next_In;
-               if Index = Default_String_Length then
-                  Self.Get_Character(Stream);
-                  return Result & Get_String;
-               else
-                  Index := Index + 1;
-               end if;
-            end if;
-
-            Self.Get_Character(Stream);
-            
+      return Result : String(Buffer.First_Index .. Buffer.Last_Index) do
+         for Index in Result'Range loop
+            Result(Index) := Buffer.Element(Index);
          end loop;
+      end return;
+   end Copy;
 
-         if not Quote_Found then
-            Self.Error("Closing quotation not found.  String literal expected");
+   -- Default size to make a character buffer.  This
+   -- is used to avoid unnecessary copies while appending
+   -- new elements
+   Default_Character_Vector_Size : constant := 256;
+
+   -- Provides a generic algorithm for parsing variable length
+   -- token string values.  This will read in characters and 
+   -- append them to the supplied buffer until the upcoming
+   -- input character fails the supplied Is_Charactar test.
+   --
+   -- NOTE:  This doesn't check the first character in the
+   -- stream
+   generic
+      with function Is_Character(Item : Character) return Boolean;
+   procedure Generic_Scan
+      (Lexer   : in out Instance;
+       Stream : not null access Ada.Streams.Root_Stream_Type'Class;
+       Buffer : in out Character_Vector);
+   procedure Generic_Scan
+      (Lexer  : in out Instance;
+       Stream : not null access Ada.Streams.Root_Stream_Type'Class;
+       Buffer : in out Character_Vector)
+   is begin
+      loop
+         Buffer.Append(Lexer.Next);
+         Lexer.Advance(Stream);
+         exit when Lexer.Not_Running or else not Is_Character(Lexer.Next);
+      end loop;
+   end Generic_Scan;
+   
+   -- Provides a generic algorithm for parsing variable length
+   -- token string values.  This will read in characters and 
+   -- append them to the supplied buffer until the upcoming
+   -- input character fails the supplied Is_Charactar test.
+   -- After that, it will check if the next character passes
+   -- the Is_Connector test and, if so, restarts the original
+   -- loop to scan more characters.  Connector characters
+   -- cannot be adjacent to each other (EX: 123_456 is 
+   -- potentially valid but 123__456 is not)
+   --
+   -- NOTE:  This doesn't check the first character in the
+   -- stream
+   generic
+      with function Is_Character(Item : Character) return Boolean;
+      with function Is_Connector(Item : Character) return Boolean;
+      Target_Name : String;
+   procedure Generic_Scan_With_Connector
+      (Lexer   : in out Instance;
+       Stream : not null access Ada.Streams.Root_Stream_Type'Class;
+       Buffer : in out Character_Vector);
+   procedure Generic_Scan_With_Connector
+      (Lexer   : in out Instance;
+       Stream : not null access Ada.Streams.Root_Stream_Type'Class;
+       Buffer : in out Character_Vector)
+   is begin
+
+      -- Look for:  value {connector value}
+      Outer: loop
+
+         -- Get value before any connectors
+         Inner : loop
+            Buffer.Append(Lexer.Next);
+            Lexer.Advance(Stream);
+            exit Outer when Lexer.Not_Running;
+            exit Inner when not Is_Character(Lexer.Next);
+         end loop Inner;
+
+         -- Repeat inner loop if a connector is found
+         exit Outer when not Is_Connector(Lexer.Next);
+         Buffer.Append(Lexer.Next);
+         Lexer.Advance(Stream);
+
+         -- Ensure there is a valid character after the connector
+         if Lexer.Not_Running or else not Is_Character(Lexer.Next) then
+            if Is_Connector(Lexer.Next) then
+               Lexer.Error(Target_Name & " cannot have back to back connectors");
+            elsif Strings.Is_Whitespace(Lexer.Next) then
+               Lexer.Error(Target_Name & " cannot end with a connector");
+            else
+               Lexer.Error(Target_Name & " has invalid character after connector");
+            end if;
          end if;
 
-         return Result(1..Natural(Index)-1);
-         
-      end Get_String;
+      end loop Outer;
+   end Generic_Scan_With_Connector;   
+
+   -------------------------------------------------------
+   --------------- High Level Tokenization ---------------
+   -------------------------------------------------------
+
+   -- Local rename
+   function "+"(Item : String) return Strings.Holder
+      renames Strings."+";
+
+   function Make
+      (Self  : in out Instance;
+       Kind  : Tokens.Token_Kind; 
+       Value : String; 
+       First : Column_Number) 
+       return Token
+   is begin
+      Self.Last_Token := Kind;
+      return (Kind, +Value, Self.Line, First, Self.Column-1);
+   end Make;
+
+   function End_Of_Stream(Self : in out Instance) return Token is
    begin
-      Self.Get_Character(Stream); -- Munch the quote
-      declare
-         Result : constant String := Get_String;
+      Self.Last_Token := Tokens.End_Of_Stream;
+      return (Tokens.End_Of_Stream, +"", Self.Line, Self.Column, Self.Column);
+   end End_Of_Stream;
+
+   function Get_Next_Token
+      (Self   : in out Instance; 
+       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
+       return Token
+   is 
+      use Strings;
+      use Tokens;
+
+      -- Local rename
+      subtype Token_Kind is Tokens.Token_Kind; 
+
+      -- This is for single character delimiters
+      function Basic_Delimiter(Kind : Token_Kind) return Token is
+         Value : constant String        := "" & Self.Next;
+         First : constant Column_Number := Self.Column;
       begin
-         Self.Add_Token
-            (Kind  => Tokens.String_Literal,
-             Value => Result,
-             Line  => Self.Line,
-             First => First,
-             Last  => Self.Column - 1);
-      end;
+         Self.Advance(Stream);
+         return Self.Make(Kind, Value, First);
+      end Basic_Delimiter;
+      
+      -- This is for double character delimiters
+      function Compound_Delimiter(Kind : Token_Kind) return Token is
+         Value : constant String        := "" & Self.Next & Self.Peek;
+         First : constant Column_Number := Self.Column;
+      begin
+         Self.Advance(Stream);
+         Self.Advance(Stream);
+         return Self.Make(Kind, Value, First);
+      end Compound_Delimiter;
+
+   begin
+      << Restart_Location >> -- Location to return to when a comment is skipped
+      Self.Skip_Whitespace(Stream);
+
+      if Strings.Is_Letter(Self.Next) then -- Handle identifiers
+         return Self.Get_Identifier(Stream);
+      elsif Strings.Is_Numeral(Self.Next) then -- Handle numbers
+         return Self.Get_Numeric_Literal(Stream);
+      end if;
+
+      case Self.Next is
+         when Plus              => return Basic_Delimiter(Delimiter_Plus);
+         when Ampersand         => return Basic_Delimiter(Delimiter_Concatenate);
+         when Bar               => return Basic_Delimiter(Delimiter_Membership);
+         when Open_Parenthesis  => return Basic_Delimiter(Delimiter_Open_Parenthesis);
+         when Close_Parenthesis => return Basic_Delimiter(Delimiter_Close_Parenthesis);
+         when Open_Bracket      => return Basic_Delimiter(Delimiter_Open_Bracket);
+         when Close_Bracket     => return Basic_Delimiter(Delimiter_Close_Bracket);
+         when Semicolon         => return Basic_Delimiter(Delimiter_Semicolon);
+         when Comma             => return Basic_Delimiter(Delimiter_Comma);
+         when At_Sign           => return Basic_Delimiter(Delimiter_Target);
+         when Apostrophe        => return Self.Get_Character_Or_Apostrophe(Stream);
+         when Quote             => return Self.Get_String_Literal(Stream);
+         when Asterisk => 
+            case Self.Peek is
+               when Asterisk => return Compound_Delimiter(Delimiter_Exponent);
+               when others   => return Basic_Delimiter   (Delimiter_Multiply);
+            end case;
+         when Forward_Slash => 
+            case Self.Peek is
+               when Equals => return Compound_Delimiter(Delimiter_Not_Equals);
+               when others => return Basic_Delimiter   (Delimiter_Divide);
+            end case;
+         when Less_Than => 
+            case Self.Peek is
+               when Equals       => return Compound_Delimiter(Delimiter_Less_Than_Equals);
+               when Greater_Than => return Compound_Delimiter(Delimiter_Box);
+               when Less_Than    => return Compound_Delimiter(Delimiter_Left_Label);
+               when others       => return Basic_Delimiter   (Delimiter_Less_Than);
+            end case;
+         when Greater_Than => 
+            case Self.Peek is
+               when Equals       => return Compound_Delimiter(Delimiter_Greater_Than_Equals);
+               when Greater_Than => return Compound_Delimiter(Delimiter_Right_Label);
+               when others       => return Basic_Delimiter   (Delimiter_Greater_Than);
+            end case;
+         when Colon => 
+            case Self.Peek is
+               when Equals => return Compound_Delimiter(Delimiter_Assignment);
+               when others => return Basic_Delimiter   (Delimiter_Colon);
+            end case;
+         when Equals => 
+            case Self.Peek is
+               when Greater_Than => return Compound_Delimiter(Delimiter_Arrow);
+               when others       => return Basic_Delimiter   (Delimiter_Equals);
+            end case;
+         when Period => 
+            case Self.Peek is
+               when Period => return Compound_Delimiter(Delimiter_Range);
+               when others => return Basic_Delimiter   (Delimiter_Dot);
+            end case;
+         when Minus => 
+            case Self.Peek is
+               when Minus  => 
+                  if Self.Comments_On then -- This is only for testing the lexer
+                     return Self.Get_Comment(Stream);
+                  else
+                     Self.Skip_Comment(Stream); -- Normal code path is here
+                     goto Restart_Location;
+                  end if;
+               when others => 
+                  return Basic_Delimiter(Delimiter_Minus);
+            end case;
+         when others => 
+            if Self.Is_Running then
+               Self.Error("Unexpected input to lexer");
+            elsif Self.Last_Token in Tokens.End_Of_Stream then
+               raise Program_Error with "Invalid lexer state";
+            else
+               return Self.End_Of_Stream;
+            end if;
+      end case;
+
+   end Get_Next_Token;
+
+   function Get_Identifier
+      (Self   : in out Instance;
+       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
+       return Token 
+   is 
+      use Compiler.Strings;
+      use Compiler.Tokens;
+      subtype Token_Kind is Tokens.Token_Kind;
+
+      First  : constant Column_Number := Self.Column;
+      Buffer : Character_Vector;
+
+      -- Instantiate a character scanner
+      procedure Scan_Identifier is new Generic_Scan_With_Connector
+         (Is_Character => Is_Identifier,
+          Is_Connector => Is_Punctuation_Connector,
+          Target_Name  => "Identifier");
+   begin
+      Scan_Identifier(Self, Stream, Buffer);
+      pragma Assert(Self.Column > First);
+
+      -- Identify the correct token kind based on the previous token.  This is
+      -- done to avoid parsing the identifier into a keyword prematurely
+      case Self.Last_Token is
+         when Delimiter_Apostrophe => return Self.Make(Attribute, Buffer.Copy, First);
+         when Keyword_Pragma       => return Self.Make(Pragma_ID, Buffer.Copy, First);
+         when others => 
+            -- Either a keyword or identifier
+            declare
+               Result : constant String     := Buffer.Copy;
+               Kind   : constant Token_Kind := Keywords.Token_Kind(Result);
+            begin
+               return Self.Make(Kind, Result, First);
+            end;
+      end case;
+   end Get_Identifier;
+
+   function Get_Numeric_Literal
+      (Self   : in out Instance;
+       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
+       return Token is separate;
+       
+   function Get_String_Literal
+      (Self   : in out Instance;
+       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
+       return Token
+   is 
+      use Compiler.Tokens;
+      use Compiler.Strings;
+
+      Buffer  : Character_Vector;
+      First   : constant Column_Number := Self.Column;
+      Bad_End : constant String        := "Unexpected end to string literal";
+
+      -- Empty string occurs when Current = Quote and Peek /= quote
+      function Is_Empty_String return Boolean is
+         (Self.Next = Quote and Self.Peek /= Quote) with Inline;
+   begin
+
+      Self.Advance(Stream);  -- Munch opening quote
+
+      -- Look for empty string for quick result.  If not, then
+      -- ensures there is at least some valid content to scan
+      if Is_Empty_String then
+         Self.Advance(Stream); -- Munch closing quote
+         return Self.Make(String_Literal, "", First);
+      elsif Self.Not_Running or not Is_Graphic(Self.Next) then
+         Self.Error(Bad_End);
+      end if;
+
+      -- Preallocate some space
+      Buffer.Reserve_Capacity(Default_Character_Vector_Size);
+
+      loop
+         while Self.Is_Running and Is_String(Self.Next) loop
+            Buffer.Append(Self.Next);
+            Self.Advance(Stream);
+         end loop;
+
+         -- There must be a closing quote to a string literal
+         if Self.Next /= Quote then
+            Self.Error(Bad_End);
+         end if;
+
+         Self.Advance(Stream); -- Munch closing quote
+         exit when Self.Next /= Quote;  -- Exit if not an escaped quote
+
+         Buffer.Append(Quote);  -- Add escaped quote
+         Self.Advance(Stream);
+      end loop;
+
+      return Self.Make(String_Literal, Buffer.Copy, First);
+
    end Get_String_Literal;
+
+   function Get_Character_Or_Apostrophe
+      (Self   : in out Instance;
+       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
+       return Token
+   is 
+      First : constant Column_Number := Self.Column;
+      Value : Character;
+      use Strings;
+      use Tokens;
+   begin
+      Self.Advance(Stream); -- Munch opening apostrophe
+      if          Self.Peek = Apostrophe
+         and then Self.Last_Token not in Identifier | Attribute
+         and then Is_Graphic(Self.Next)
+      then 
+         Value := Self.Next;
+         Self.Advance(Stream); -- Munch value
+         Self.Advance(Stream); -- Munch closing apostrophe
+         return Self.Make(Character_Literal, "" & Value, First);
+      else
+         return Self.Make(Delimiter_Apostrophe, "'", First);
+      end if;
+   end Get_Character_Or_Apostrophe;
+
+   function Get_Comment
+      (Self   : in out Instance;
+       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
+       return Token
+   is 
+      -- Comments end the end of a line
+      function Is_Comment(Item : Character) return Boolean is
+         (         Self.Is_Running 
+          and then not Strings.Is_Line_Terminator(Item))
+         with Inline;
+
+      procedure Scan_Comment is new Generic_Scan(Is_Comment);
+
+      Buffer : Character_Vector;
+      First  : constant Column_Number := Self.Column;
+   begin
+      Self.Advance(Stream); -- Munch dash
+      Self.Advance(Stream); -- Munch dash
+
+      -- If there is a comment to read, then save it
+      -- and update the last token
+      if Is_Comment(Self.Next) then
+
+         Buffer.Reserve_Capacity(Default_Character_Vector_Size);
+
+         Scan_Comment(Self, Stream, Buffer);
+
+      end if;
+
+      -- Don't update Last_Token, so return raw value
+      return (Tokens.Comment, +Buffer.Copy, Self.Line, First, Self.Column-1);
+   end Get_Comment;
 
    ------------------------------------------------------
    -------------- Lexer Output Operations ---------------
@@ -452,7 +616,8 @@ package body Compiler.Lexer is
 
    procedure Halt(Self : Instance; Message : String) is
    begin
-      raise Lexical_Error with Message;
+      Strings.Text_IO.Put_Line(Message);
+      raise Lexical_Error;
    end Halt;
 
    procedure Error(Self : Instance; Message : String) is
@@ -460,11 +625,17 @@ package body Compiler.Lexer is
       Self.Error(Message, Self.Line, Self.Column);
    end Error;
 
-   procedure Error(Self : Instance; Message : String; Line, Column : Positive) is
+   procedure Error
+      (Self    : Instance; 
+       Message : String; 
+       Line    : Line_Number; 
+       Column  : Column_Number)
+   is 
+      use Compiler.Tokens;
    begin
       Self.Halt
          ("Lexical Error @ "
-          & Strings.Image(Line) & ":" & Strings.Image(Column)
+          & Image(Line) & ":" & Image(Column)
           & " => " & Message);
    end Error;
 
@@ -472,9 +643,10 @@ package body Compiler.Lexer is
       use Strings.Text_IO;
       use Strings;
       use type Ada.Containers.Count_Type;
+      use Tokens;
    begin
       Put(Image(Self.Line) & ":" & Image(Self.Column) & " => "
-         & Image(Pos(Self.Next_In)) & " => "
+         & Image(Pos(Self.Next)) & " => "
          & "Count: " & Image(Natural(Self.Tokens.Length)) & " => ");
       if Self.Tokens.Length > 0 then
          Debug(Self.Tokens(Self.Tokens.Last_Index));
@@ -482,5 +654,6 @@ package body Compiler.Lexer is
          Text_IO.New_Line;
       end if;
    end Debug;
+   
 
 end Compiler.Lexer;

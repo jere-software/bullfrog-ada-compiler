@@ -55,6 +55,7 @@ package Compiler.Strings is
 
    -- Local redefines
    Space             : constant Character := ' ';
+   Nul               : constant Character := Latin_1.Nul;
    Tab               : constant Character := Latin_1.HT;
    Carriage_Return   : constant Character := Latin_1.CR;
    New_Line          : constant Character := Latin_1.LF;
@@ -80,24 +81,30 @@ package Compiler.Strings is
    Period            : constant Character := '.';
    At_Sign           : constant Character := '@';
    Pound             : constant Character := '#';
-   Exponent_Lower    : constant Character := 'e';
-   Exponent_Upper    : constant Character := 'E';
+   Lower_A           : constant Character := 'a';
+   Lower_E           : constant Character := 'e';
+   Upper_A           : constant Character := 'A';
+   Upper_E           : constant Character := 'E';
    Zero              : constant Character := '0';
 
    -- Numeric literal types
-   subtype Digit is Character range '0' .. '9';
+   subtype Numeral_Digit is Character range '0' .. '9';
+   subtype Upper_Hex is Character range 'A' .. 'F';
+   subtype Lower_Hex is Character range 'a' .. 'f';
    subtype Extended_Digit is Character with Static_Predicate => 
-      Extended_Digit in 'a'..'f' | 'A'..'F';
+      Extended_Digit in Upper_Hex | Lower_Hex;
    subtype Hex_Digit is Character with Static_Predicate =>
-      Hex_Digit in Digit | Extended_Digit;
+      Hex_Digit in Numeral_Digit | Extended_Digit;
+   subtype E is Character with Static_Predicate =>
+      E in Upper_E | Lower_E;
 
    -- Lexical separator types
    subtype Whitespace    is Character with Static_Predicate =>
       Whitespace in Tab .. Carriage_Return | Space;
 
-   -- Operator detection types
-   subtype Operator_1_Character is Character with Static_Predicate =>
-      Operator_1_Character in 
+   -- Delimiter detection types
+   subtype Delimiter_1_Character is Character with Static_Predicate =>
+      Delimiter_1_Character in 
            Plus 
          | Ampersand 
          | Bar 
@@ -109,8 +116,8 @@ package Compiler.Strings is
          | Comma
          | Apostrophe
          | At_Sign;
-   subtype Operator_2_Character is Character with Static_Predicate =>
-      Operator_2_Character in 
+   subtype Delimiter_2_Character is Character with Static_Predicate =>
+      Delimiter_2_Character in 
            Minus 
          | Asterisk
          | Forward_Slash
@@ -119,6 +126,9 @@ package Compiler.Strings is
          | Colon
          | Equals
          | Period;
+
+   -- Type used for Hex_Digit conversions
+   type Number_Base is range 2 .. 16;
    
    -- Type conversion operations
    function To_String(Value : Standard.String) return String
@@ -129,14 +139,19 @@ package Compiler.Strings is
       (if Value < 0 then 
          Value'Image
        else 
-         Ada.Strings.Fixed.Trim(Value'Image, Ada.Strings.Left));
-   function Numeric_Value(Value : Hex_Digit) return Natural is
+         Ada.Strings.Fixed.Trim(Value'Image, Ada.Strings.Left))
+       with Inline;
+   function Value(Value : String) return Integer is
+      (Integer'Value(Value)) with Inline;
+   function Numeric_Value(Value : Character) return Number_Base'Base is
       (case Value is
-         when '0'..'9' => Character'Pos(Value) - Character'Pos('0'),
-         when 'a'..'f' => Character'Pos(Value) - Character'Pos('a') + 10,
-         when 'A'..'F' => Character'Pos(Value) - Character'Pos('A') + 10);
+         when Numeral_Digit => Character'Pos(Value) - Character'Pos(Zero),
+         when Lower_Hex     => Character'Pos(Value) - Character'Pos(Lower_A) + 10,
+         when Upper_Hex     => Character'Pos(Value) - Character'Pos(Upper_A) + 10,
+         when others        => Number_Base'Last)
+       with Static, Inline;
    function Pos(Value : Character) return Natural is
-      (Character'Pos(Value));
+      (Character'Pos(Value)) with Inline;
    function Hash(Value : String) return Ada.Containers.Hash_Type
       renames Ada.Strings.Hash;
 
@@ -151,32 +166,37 @@ package Compiler.Strings is
       renames Handling.To_Upper;
 
    -- Utility operations for parsing
-   function Is_Alpha(Value : Character) return Boolean
+   function Is_Letter(Value : Character) return Boolean
       renames Handling.Is_Letter;
-   function Is_Digit(Value : Character) return Boolean
-      renames Handling.Is_Digit;
-   function Is_Hexadecimal_Digit(Value : Character) return Boolean
-      renames Handling.Is_Hexadecimal_Digit;
    function Is_Alphanumeric(Character : Strings.Character) return Boolean
       renames Handling.Is_Alphanumeric;
-   function Is_Newline(Character : Strings.Character) return Boolean
-      renames Handling.Is_Line_Terminator;
    function Is_Graphic(Character : Strings.Character) return Boolean
       renames Handling.Is_Graphic;
-   function Is_Name(Character : Strings.Character) return Boolean is
-      (Character = Underscore 
-       or else Is_Alphanumeric(Character));
-   function Is_Integer(Character : Strings.Character) return Boolean is
-      (Character in Underscore | Pound | Plus | Minus 
-       or else Is_Hexadecimal_Digit(Character));
-   function Is_Real(Character : Strings.Character) return Boolean is
-      (Character in Underscore | Period | Plus | Minus 
-       | Exponent_Lower | Exponent_Upper 
-       or else Is_Digit(Character));
-   function Is_Space(Character : Strings.Character) return Boolean is
-      (Character in Whitespace);
-   function Is_Operator(Character : Strings.Character) return Boolean is
-      (Character in Operator_1_Character | Operator_2_Character);
+   function Is_Line_Terminator(Character : Strings.Character) return Boolean
+      renames Handling.Is_Line_Terminator;
+   function Is_Space(Character : Strings.Character) return Boolean
+      renames Handling.Is_Space;
+   function Is_Mark(Character : Strings.Character) return Boolean
+      renames Handling.Is_Mark;
+   function Is_Punctuation_Connector(Character : Strings.Character) return Boolean
+      renames Handling.Is_Punctuation_Connector;
+   function Is_Identifier(Value : Character) return Boolean is
+      (Is_Alphanumeric(Value) or else Is_Mark(Value)) with Inline;
+   function Is_Numeral(Value : Character) return Boolean
+      is (Value in Numeral_Digit) with Static, Inline;
+   function Is_Numeral(Value : Character; Base : Number_Base) return Boolean
+      is (Numeric_Value(Value) < Base) with Static, Inline;
+   function Is_Underline(Value : Character) return Boolean is
+      (Value = Underscore) with Static, Inline;
+   function Is_Whitespace(Value : Character) return Boolean is
+      (        Is_Space(Value) 
+       or else Value = Tab 
+       or else Is_Line_Terminator(Value)) with Inline;
+   function Is_Delimiter(Character : Strings.Character) return Boolean is
+      (Character in Delimiter_1_Character | Delimiter_2_Character)
+      with Static, Inline;
+   function Is_String(Item : Character) return Boolean is
+      (Item /= Quote and then Is_Graphic(Item)) with Inline;
 
    -- Utility operations for getting input data
    function Stream(File : File_Type) return Stream_Access

@@ -5,17 +5,26 @@
 -- License, v. 2.0. If a copy of the MPL was not distributed with this
 -- file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+with Compiler.Strings;
+with Ada.Containers.Vectors;
+
 -- Provides a tokenized breakdown of all lexical elements.
 -- Note that while identifiers are broken down into keywords,
 -- they are not broken down into attributes, aspects, or
 -- pragmas.
-package Compiler.Tokens with Pure is
+package Compiler.Tokens is
 
    -- Top level token identifier
    type Token_Kind is
-      (Identifier,
+      (End_Of_Stream, -- not a real token, but appended to end of list
+       Identifier,
        Attribute,  -- Subcategory of Identifier
-       Pragma_ID,
+       Pragma_ID,  -- Subcategory of Identifier
+       String_Literal,
+       Character_Literal,
+       Integer_Literal,
+       Real_Literal,
+       Comment, -- Only useful for unit testing, not for production
        Keyword_Begin,
        Keyword_Do,
        Keyword_Goto,
@@ -90,68 +99,89 @@ package Compiler.Tokens with Pure is
        Keyword_Entry,
        Keyword_Requeue,
        Keyword_End,
-       String_Literal,
-       Character_Literal,
-       Integer_Literal,
-       Real_Literal,
-       Comment,
-       Operator_Plus,
-       Operator_Minus,
-       Operator_Concatenate,
-       Operator_Multiply,
-       Operator_Divide,
-       Operator_Power,
-       Operator_Membership,
-       Operator_Open_Parenthesis,
-       Operator_Close_Parenthesis,
-       Operator_Open_Bracket,
-       Operator_Close_Bracket,
-       Operator_Semicolon,
-       Operator_Colon,
-       Operator_Comma,
-       Operator_Apostrophe,
-       Operator_Dot,
-       Operator_Range,
-       Operator_At_Sign,
-       Operator_Box,
-       Operator_Left_Label,
-       Operator_Right_Label,
-       Operator_Assignment,
-       Operator_Arrow,
-       Operator_Equals,
-       Operator_Not_Equals,
-       Operator_Less_Than,
-       Operator_Less_Than_Equals,
-       Operator_Greater_Than,
-       Operator_Greater_Than_Equals);
+       Delimiter_Plus,
+       Delimiter_Minus,
+       Delimiter_Concatenate,
+       Delimiter_Multiply,
+       Delimiter_Divide,
+       Delimiter_Exponent,
+       Delimiter_Membership,
+       Delimiter_Open_Parenthesis,
+       Delimiter_Close_Parenthesis,
+       Delimiter_Open_Bracket,
+       Delimiter_Close_Bracket,
+       Delimiter_Semicolon,
+       Delimiter_Colon,
+       Delimiter_Comma,
+       Delimiter_Apostrophe,
+       Delimiter_Dot,
+       Delimiter_Range,
+       Delimiter_Target,
+       Delimiter_Box,
+       Delimiter_Left_Label,
+       Delimiter_Right_Label,
+       Delimiter_Assignment,
+       Delimiter_Arrow,
+       Delimiter_Equals,
+       Delimiter_Not_Equals,
+       Delimiter_Less_Than,
+       Delimiter_Less_Than_Equals,
+       Delimiter_Greater_Than,
+       Delimiter_Greater_Than_Equals);
 
    -- Token subgroups
    subtype Keyword is Token_Kind range
       Keyword_Begin .. Keyword_End;
-   subtype Operator is Token_Kind range
-      Operator_Plus .. Operator_Greater_Than_Equals;
+   subtype Delimiter is Token_Kind range
+      Delimiter_Plus .. Delimiter_Greater_Than_Equals;
    
    -- Precedence groups for math and boolean operations
-   subtype Or_Operation is Keyword range
-      Keyword_Or .. Keyword_Xor;
-   subtype And_Operation is Keyword range
-      Keyword_And .. Keyword_And;
-   subtype Logical_Operation is Keyword range
+   subtype Logical_Operator is Keyword range
       Keyword_And .. Keyword_Xor;
-   subtype Rel_Operation is Operator range
-      Operator_Equals .. Operator_Greater_Than_Equals;
-   subtype Binary_Add_Operation is Operator range
-      Operator_Plus .. Operator_Concatenate;
-   subtype Unary_Add_Operation is Operator range
-      Operator_Plus .. Operator_Minus;
-   subtype Mul_Operation is Token_Kind 
-      with Static_Predicate => Mul_Operation in
-           Operator_Multiply .. Operator_Power 
+   subtype Relational_Operator is Delimiter range
+      Delimiter_Equals .. Delimiter_Greater_Than_Equals;
+   subtype Binary_Adding_Operator is Delimiter range
+      Delimiter_Plus .. Delimiter_Concatenate;
+   subtype Unary_Adding_Operator is Delimiter range
+      Delimiter_Plus .. Delimiter_Minus;
+   subtype Multiplying_Operator is Token_Kind 
+      with Static_Predicate => Multiplying_Operator in
+           Delimiter_Multiply .. Delimiter_Exponent 
          | Keyword_Mod      .. Keyword_Rem;
-   subtype Highest_Precedence_Operation is Token_Kind 
-      with Static_Predicate => Highest_Precedence_Operation in
-           Operator_Power 
+   subtype Highest_Precedence_Operator is Token_Kind 
+      with Static_Predicate => Highest_Precedence_Operator in
+           Delimiter_Exponent 
          | Keyword_Abs 
          | Keyword_Not;
+
+-- Specialized numeric types for token information
+   type Line_Number is new Positive;
+   type Column_Number is new Positive;
+
+   -- Image functions
+   function Image(Item : Line_Number) return String is
+      (Strings.Image(Integer(Item))) with Inline;
+   function Image(Item : Column_Number) return String is
+      (Strings.Image(Integer(Item))) with Inline;
+
+   -- Core Token type
+   type Token
+      (Kind  : Tokens.Token_Kind := Tokens.Comment) 
+   is record
+      Value  : Strings.Holder := Strings.Empty_Holder;
+      Line   : Line_Number    := 1;
+      First  : Column_Number  := 1;
+      Last   : Column_Number  := 1;
+   end record;
+
+   ------------------------------------------------------
+   -------------------- Token Lists ---------------------
+   ------------------------------------------------------
+
+   package Vectors is new Ada.Containers.Vectors(Positive, Token);
+
+   -- Core token list type
+   subtype Token_List is Vectors.Vector;
+   Empty_Token_List : constant Token_List := Vectors.Empty_Vector;
       
 end Compiler.Tokens;

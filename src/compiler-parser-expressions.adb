@@ -125,12 +125,12 @@ package body Expressions is
          -- Now check for a relational operator, and generate
          -- a binary operation if found
          case Self.Peek is
-            when Tokens.Operator_Equals
-               | Tokens.Operator_Not_Equals
-               | Tokens.Operator_Less_Than
-               | Tokens.Operator_Less_Than_Equals
-               | Tokens.Operator_Greater_Than
-               | Tokens.Operator_Greater_Than_Equals
+            when Tokens.Delimiter_Equals
+               | Tokens.Delimiter_Not_Equals
+               | Tokens.Delimiter_Less_Than
+               | Tokens.Delimiter_Less_Than_Equals
+               | Tokens.Delimiter_Greater_Than
+               | Tokens.Delimiter_Greater_Than_Equals
             => 
                return Nodes.Binary_Operation'
                   (Token         => Self.Eat_Next,
@@ -170,8 +170,8 @@ package body Expressions is
    begin
       -- Check for leading unary operator, and if there 
       -- is one, get it and the following term;
-      if         Self.Match(Tokens.Operator_Plus) 
-         or else Self.Match(Tokens.Operator_Minus)
+      if         Self.Match(Tokens.Delimiter_Plus) 
+         or else Self.Match(Tokens.Delimiter_Minus)
       then
          Result := Make(Nodes.Unary_Operation'
             (Token      => Self.Token,
@@ -186,9 +186,9 @@ package body Expressions is
       -- binary operations until done
       loop
          case Self.Peek is
-            when Tokens.Operator_Plus 
-               | Tokens.Operator_Minus 
-               | Tokens.Operator_Concatenate
+            when Tokens.Delimiter_Plus 
+               | Tokens.Delimiter_Minus 
+               | Tokens.Delimiter_Concatenate
             =>
                Result := Make(Nodes.Binary_Operation'
                   (Token         => Self.Eat_Next,
@@ -216,7 +216,7 @@ package body Expressions is
       -- binary operations until done
       loop
          case Self.Peek is
-            when Tokens.Operator_Multiply | Tokens.Operator_Divide
+            when Tokens.Delimiter_Multiply | Tokens.Delimiter_Divide
                | Tokens.Keyword_Mod       | Tokens.Keyword_Rem
             =>
                Result := Make(Nodes.Binary_Operation'
@@ -252,7 +252,7 @@ package body Expressions is
                Left : constant Node'Class := Self.Primary;
             begin
                -- Binary operation (**)
-               if Self.Match(Tokens.Operator_Power) then
+               if Self.Match(Tokens.Delimiter_Exponent) then
                   return Nodes.Binary_Operation'
                      (Token         => Self.Token,
                       Left          => Make(Left),
@@ -282,11 +282,11 @@ package body Expressions is
             | Tokens.Integer_Literal
          =>
             return Nodes.Literal'(Token => Self.Eat_Next);
-         when Tokens.Operator_Open_Parenthesis =>
+         when Tokens.Delimiter_Open_Parenthesis =>
             Self.Eat_Next; -- Munch the open parenthesis
             return Result : constant Node'Class := Self.Expression do 
                -- Munch the close parenthesis
-               Self.Match(Tokens.Operator_Close_Parenthesis);
+               Self.Match(Tokens.Delimiter_Close_Parenthesis);
             end return;
          when Tokens.Keyword_Null =>
             return Nodes.Null_Expression'(Token => Self.Eat_Next);
@@ -299,7 +299,7 @@ package body Expressions is
 
       -- Error conditions
       case Self.Peek is
-         when Tokens.Operator_Plus | Tokens.Operator_Minus =>
+         when Tokens.Delimiter_Plus | Tokens.Delimiter_Minus =>
             Self.Eat_Next;
             Self.Error("Unary expression needs parenthesis");
          when others =>
@@ -316,7 +316,7 @@ package body Expressions is
    begin
       return Result : Node_List do 
          Result.Append(Self.Membership_Choice);
-         while Self.Match(Tokens.Operator_Membership) loop
+         while Self.Match(Tokens.Delimiter_Membership) loop
             Result.Append(Self.Membership_Choice);
          end loop;
       end return;
@@ -330,7 +330,7 @@ package body Expressions is
    function Membership_Choice(Self : in out Instance) return AST.Node'Class is
       Result : constant Node'Class := Self.Expression;
    begin
-      if Self.Match(Tokens.Operator_Range) then
+      if Self.Match(Tokens.Delimiter_Range) then
          return Nodes.Simple_Range'
             (Token => Self.Token,
              Left  => Make(Result),

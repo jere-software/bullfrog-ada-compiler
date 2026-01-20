@@ -23,6 +23,7 @@ project Default is
             for Default_Switches("ada") use
                ("-gnat2022",
                 "-gnata", 
+                -- "-gnatwa",
                 "-gnato", 
                 "-gnatE", 
                 "-fstack-check", 

@@ -19,28 +19,16 @@ package Compiler.Lexer is
    ----------------- Token Information ------------------
    ------------------------------------------------------
 
-   -- Core Token type
-   type Token
-      (Kind  : Tokens.Token_Kind := Tokens.Comment) 
-   is record
-      Value  : Strings.Holder := Strings.Empty_Holder;
-      Line   : Positive       := 1;
-      First  : Positive       := 1;
-      Last   : Positive       := 1;
-   end record;
+   -- Core token types
+   subtype Token is Tokens.Token;  
+   subtype Token_List is Tokens.Token_List;
+   
+   -- Import all operators
+   use all type Token;
+   use all type Token_List;
 
    -- Prints the information for the supplied token to STDOUT
    procedure Debug(Self : Token);
-
-   ------------------------------------------------------
-   -------------------- Token Lists ---------------------
-   ------------------------------------------------------
-
-   package Vectors is new Ada.Containers.Vectors(Positive, Token);
-
-   -- Core token list type
-   subtype Token_List is Vectors.Vector;
-   Empty_Token_List : constant Token_List := Vectors.Empty_Vector;
 
    ------------------------------------------------------
    ------------------ Lexer Operation -------------------
@@ -58,33 +46,6 @@ package Compiler.Lexer is
       (Self   : in out Instance; 
        Stream : not null access Ada.Streams.Root_Stream_Type'Class);
 
-   -- Individual operations for getting tokens from a stream one
-   -- by one.  Call Initialize first, then use Is_Running and
-   -- Get_Token to iterate through tokens
-   procedure Initialize(Self : in out Instance); -- Resets lexer state
-   function Is_Running(Self : Instance) return Boolean with Inline;
-   procedure Get_Token
-      (Self   : in out Instance; 
-       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
-      with Pre => Self.Is_Running;
-
-   -- Last token info
-   function Token_Kind(Self : Instance) return Tokens.Token_Kind
-      with  Inline, 
-            Pre => Self.All_Tokens.Length not in 0;
-   function Token_Value(Self : Instance) return Strings.String
-      with  Inline, 
-            Pre => Self.All_Tokens.Length not in 0;
-   function Token_Line(Self : Instance) return Positive
-      with  Inline, 
-            Pre => Self.All_Tokens.Length not in 0;
-   function Token_First(Self : Instance) return Positive
-      with  Inline, 
-            Pre => Self.All_Tokens.Length not in 0;
-   function Token_Last(Self : Instance) return Positive
-      with  Inline, 
-            Pre => Self.All_Tokens.Length not in 0;
-
    -- Returns the current list of tokens found so far
    function All_Tokens(Self : aliased Instance) 
       return not null access constant Token_List
@@ -101,6 +62,15 @@ package Compiler.Lexer is
 
 private
 
+   --- Intializes the lexer
+   procedure Initialize -- Resets lexer state
+      (Self   : in out Instance;
+       Stream : not null access Ada.Streams.Root_Stream_Type'Class); 
+
+   -- Lexer status
+   function Is_Running(Self : Instance) return Boolean with Inline;
+   function Not_Running(Self : Instance) return Boolean with Inline;
+
    -- local declaration so all child packages use the same
    -- underlying character type
    subtype Character is Strings.Character; 
@@ -111,87 +81,97 @@ private
    subtype String is Strings.String;
    use all type String;
 
+   -- local renaming for ease of use
+   subtype Line_Number is Tokens.Line_Number;
+   subtype Column_Number is Tokens.Column_Number;
+   use all type Line_Number;
+   use all type Column_Number;
+
    -- Lexer state type
    type Status is 
-      (Idle, 
-       Running);
+      (Off,            -- Finished
+       Running,        -- Looking for characters
+       End_Of_Stream); -- Last character found
 
    type Instance is new Ada.Finalization.Limited_Controlled with record
-      Next_In     : Character          := Strings.Space;  -- Next character to process
-      Last_In     : Character          := Strings.Space;  -- Last character processed
-      State       : Lexer.Status       := Idle;
-      Tokens      : aliased Token_List := Empty_Token_List;
-      Line        : Positive           := 1;
-      Column      : Positive           := 1;
-      Next_Line   : Positive           := 1;
-      Next_Column : Positive           := 1;
+      Next        : Character          := Strings.Nul;  -- Next character to process
+      Peek        : Character          := Strings.Nul;  -- Future character to process
+      Last_Token  : Tokens.Token_Kind  := Tokens.End_Of_Stream;
+      State       : Lexer.Status       := Off;
+      Tokens      : aliased Token_List := Compiler.Tokens.Empty_Token_List;
+      Line        : Line_Number        := 1;
+      Column      : Column_Number      := 1;
+      Peek_Line   : Line_Number        := 1;
+      Peek_Column : Column_Number      := 1;
       Comments_On : Boolean            := False;
    end record;
 
-   -- Token insertion operations
-   procedure Add_Token
-      (Self  : in out Instance; 
-       Kind  : Tokens.Token_Kind;
-       Value : String;
-       Line  : Positive;
-       First : Positive;
-       Last  : Positive)
-   with Inline;
-   
-   -- Last token update operations
-   procedure Set_Token_Value(Self : in out Instance; Value : String)
-      with Inline,
-         Pre => Self.Tokens.Length not in 0;
-   procedure Set_Token_Last(Self : in out Instance; Value : Positive)
-      with Inline,
-         Pre => Self.Tokens.Length not in 0;
-
-   -- Top level scanning operations that generate tokens
-   procedure Get_Comment -- Usually called after Get_Operator
-      (Self   : in out Instance; 
-       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
-      with Pre => Self.Token_Kind in Tokens.Comment;
-   procedure Skip_Comment -- Usually called after Get_Operator
-      (Self   : in out Instance; 
-       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
-      with Pre => Self.Token_Kind in Tokens.Comment;
-   procedure Get_Identifier -- Can return Attribute or Pragma_ID tokens
-      (Self   : in out Instance; 
-       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
-      with Pre => Strings.Is_Alpha(Self.Next_In);
-   procedure Get_Operator -- Can return Comment tokens
-      (Self   : in out Instance; 
-       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
-      with Pre => Strings.Is_Operator(Self.Next_In);
-   procedure Get_Numeric_Literal -- Can return Operator_Range tokens
-      (Self   : in out Instance; 
-       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
-      with Pre => Strings.Is_Digit(Self.Next_In);
-   procedure Get_Character_Literal
-      (Self   : in out Instance; 
-       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
-      with Pre => Self.Next_In in Strings.Apostrophe;
-   procedure Get_String_Literal
-      (Self   : in out Instance; 
-       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
-      with Pre => Self.Next_In in Strings.Quote;
-
    -- Low level input operations
-   procedure Get_Character
-      (Self   : in out Instance; 
-       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
-      with Pre => Self.Is_Running;
+   procedure Advance
+      (Self   : in out Instance;
+       Stream : not null access Ada.Streams.Root_Stream_Type'Class);
    procedure Skip_Whitespace
       (Self   : in out Instance; 
+       Stream : not null access Ada.Streams.Root_Stream_Type'Class);
+   procedure Skip_Comment
+      (Self   : in out Instance; 
        Stream : not null access Ada.Streams.Root_Stream_Type'Class)
-      with Pre => Self.Is_Running;
+      with Pre => Self.Next in Strings.Minus and Self.Peek in Strings.Minus;
 
    -- Low level output operations
    procedure Halt(Self : Instance; Message : String)
       with No_Return;
    procedure Error(Self : Instance; Message : String) 
       with Inline, No_Return;
-   procedure Error(Self : Instance; Message : String; Line, Column : Positive)
-      with Inline, No_Return;
+   procedure Error
+      (Self    : Instance; 
+       Message : String; 
+       Line    : Line_Number; 
+       Column  : Column_Number) with Inline, No_Return;
 
+   -- Token creation
+   function Make
+      (Self  : in out Instance;
+       Kind  : Tokens.Token_Kind; 
+       Value : String; 
+       First : Column_Number) 
+       return Token;
+   function End_Of_Stream(Self : in out Instance) return Token
+      with Pre  =>    Self.Not_Running 
+                  and Self.Last_Token not in Tokens.End_Of_Stream,
+           Post => Self.Last_Token in Tokens.End_Of_Stream;
+
+   -- Tokenization
+   function Get_Next_Token
+      (Self   : in out Instance;
+       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
+       return Token
+      with Pre => Self.Is_Running;
+   function Get_Identifier
+      (Self   : in out Instance;
+       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
+       return Token
+      with Pre => Self.Is_Running and Strings.Is_Letter(Self.Next);
+   function Get_Numeric_Literal
+      (Self   : in out Instance;
+       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
+       return Token
+      with Pre => Self.Is_Running and Strings.Is_Numeral(Self.Next);
+   function Get_String_Literal
+      (Self   : in out Instance;
+       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
+       return Token
+      with Pre => Self.Is_Running and Self.Next in Strings.Quote;
+   function Get_Character_Or_Apostrophe
+      (Self   : in out Instance;
+       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
+       return Token
+      with Pre => Self.Is_Running and Self.Next = Strings.Apostrophe;
+   function Get_Comment
+      (Self   : in out Instance;
+       Stream : not null access Ada.Streams.Root_Stream_Type'Class)
+       return Token
+      with Pre =>  Self.Is_Running 
+               and Self.Next = Strings.Minus 
+               and Self.Peek = Strings.Minus;
 end Compiler.Lexer;

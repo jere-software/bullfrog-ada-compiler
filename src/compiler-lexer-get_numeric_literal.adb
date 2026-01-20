@@ -5,231 +5,224 @@
 -- License, v. 2.0. If a copy of the MPL was not distributed with this
 -- file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
--- Parses the stream for a numeric literal (real or integer)
+-- Scans the stream for a numeric literal (real or integer)
 separate (Compiler.Lexer) 
-procedure Get_Numeric_Literal
+function Get_Numeric_Literal
    (Self   : in out Instance; 
     Stream : not null access Ada.Streams.Root_Stream_Type'Class)
+    return Token
 is 
 
-   Line  : constant Positive := Self.Line;
-   First : constant Positive := Self.Column;
+   use Strings;
 
-   -- Used for based literal parsing
-   Pound_Count : Natural range 0 .. 2 := 0;  
-   Digit_Count : Natural range 0 .. 3 := 0; -- leading 0's ignored
+   -- Curren number parsing state
+   type Scan_State is (Decimal, Decimal_Real, Based, Based_Real, Exponent);
 
-   -- Parsing state
-   Decimal_Found  : Boolean   := False;
-   Exponent_Found : Boolean   := False;
-   Range_Found    : Boolean   := False;
+   Buffer  : Character_Vector       := Empty(Default_Character_Vector_Size);
+   First   : constant Column_Number := Self.Column;
+   Base    : Number_Base            := 10;
+   Is_Real : Boolean                := False;
+   State   : Scan_State            := Decimal;
 
-   -- Base calculation variables.  Type is intentionally
-   -- not constrained to 2..16 in order to facilitate 
-   -- error detection and report
-   Base        : Natural := 10;
-   Base_Digits : String(1..2);
+   -- Need a one parameter version that still accounts for 
+   -- the current base.  This will be supplied to Generic_Scan
+   function Is_Numeral(Item : Character) return Boolean is
+      (Is_Numeral(Item, Base));
 
-   -- Used to validate that a '#', '.', or '_' are not preceded
-   -- by a symbol
-   procedure Check_Preceded_By_Digit is
-      use Strings;
+   -- Numeral scanner.  Will handle digits and underlines, but
+   -- will not handle separators
+   procedure Scan_Numeral is new Generic_Scan_With_Connector
+      (Is_Character => Is_Numeral,
+       Is_Connector => Is_Underline,
+       Target_Name  => "Numeric literal");
+
+   -- Updates the numeral base when transitioning from 
+   -- Decimal state to Based state
+   procedure Update_Base
+      with Pre => State = Decimal and Self.Next = Pound and not Is_Real;
+   procedure Update_Base is
    begin
-      if Self.Last_In in Period | Underscore | Pound | Plus | Minus then
-         Self.Error("Previous character must be a digit");
-      end if;
-   end Check_Preceded_By_Digit;
+      Base := Number_Base(Value(Buffer.Copy));
+   exception
+      when Constraint_Error => Self.Error("Invalid value for base: " & Buffer.Copy);
+   end Update_Base;
 
-   -- Indicates if the literal has completed and ends with the appropriate
-   -- character
-   function Literal_Finished return Boolean is
-      (Pound_Count /= 1 and then Self.Last_In in Strings.Digit | Strings.Pound)
-   with Inline;
-
-   -- Recursive parsing function.
-   function Get_Numeric return String is
-      Result : String(1..Default_String_Length);
-      use Strings;
+   -- Adds the next character to the buffer and
+   -- moves forward in the stream
+   procedure Append_Next is
    begin
+      Buffer.Append(Self.Next);
+      Self.Advance(Stream);
+   end Append_Next;
 
-      for Index in Result'Range loop
+   -- State transition logic.  Updates local variables based on
+   -- the New_State value supplied.  It will munch any separators.
+   procedure Set_State_To(New_State : Scan_State)
+      with Pre => (case State is
+                     when Decimal      => New_State in Decimal_Real | Based | Exponent,
+                     when Decimal_Real => New_State in Exponent,
+                     when Based        => New_State in Based_Real | Exponent,
+                     when Based_Real   => New_State in Exponent,
+                     when Exponent     => False); 
+   procedure Set_State_To(New_State : Scan_State) is
+   begin
+      case New_State is
+         when Decimal_Real => Is_Real := True;
+         when Based        => Update_Base;
+         when Based_Real   => Is_Real := True;
+         when Exponent     => Base    := 10;
+            case Self.Peek is
+               when Plus   => Append_Next;
+               when Minus  => Append_Next;
+                  if not Is_Real then
+                     Self.Error("Integer literal cannot have negative exponent");
+                  end if;
+               when others => null;
+            end case;
+         when others => raise Program_Error with 
+            "Invalid scan state for numeric literal";
+      end case;
 
-         case Self.Next_In is
-            when Digit =>
-               case Pound_Count is
-                  when 0 => 
-                     if Digit_Count <= 2 then
-                        if Digit_Count = 2 then
-                           Digit_Count := 3;
-                        elsif Digit_Count = 1 then
-                           Base_Digits(2) := Self.Next_In;
-                           Digit_Count := 2;
-                        elsif Self.Next_In /= Zero then
-                           Base_Digits(1) := Self.Next_In;
-                           Digit_Count := 1;
-                        end if;
-                     end if;
-                  when 1 => 
-                     if Numeric_Value(Self.Next_in) >= Base then
-                        Self.Error("Value outside of base range of digit");
-                     end if;
-                  when 2 => 
-                     if not Exponent_Found then
-                        Self.Error("Digit cannot be between '#' and 'E'.  Exponent expected");
-                     end if;
-               end case;
-            when Extended_Digit =>
-               if Pound_Count /= 1 then
-                  if Self.Next_in not in Exponent_Lower | Exponent_Upper then
-                     Self.Error("Extended digit outside of #'s if digit");
-                  elsif Exponent_Found then
-                     Self.Error("Too many exponents for digit");
-                  elsif Pound_Count = 0 and Self.Last_In not in Digit then
-                     Self.Error("Exponent must be preceded by a digit");
-                  elsif Pound_Count = 2 and Self.Last_In /= Pound then
-                     Self.Error("Exponent must be preceded by '#'");
-                  end if;
-                  Exponent_Found := True;
-               elsif Numeric_Value(Self.Next_in) >= Base then
-                  Self.Error("Value outside of base range of digit");
-               end if;
-            when Underscore =>
-               Check_Preceded_By_Digit;
-            when Pound =>
-               Check_Preceded_By_Digit;
-               if Exponent_Found then
-                  Self.Error("'#' cannot be in exponent field of digit");
-               elsif Pound_Count = 0 then 
-                  if Decimal_Found then
-                     Self.Error("'#' cannot be after decimal in digit");
-                  end if;
-                  case Digit_Count is
-                     when 0 => Self.Error("Base must appear before '#' in digit");
-                     when 1 => Base := Numeric_Value(Base_Digits(1));
-                     when 2 => Base := 
-                        10 * Numeric_Value(Base_Digits(1))
-                           + Numeric_Value(Base_Digits(2));
-                     when others => Self.Error("'#' comes too late in digit");
+      State := New_State;
+      Append_Next;
+   end Set_State_To;
+
+   -- Indicates if this is a range delimiter instead of a decimal period
+   function Is_Range return Boolean is (Self.Peek = Period) 
+      with Inline, Pre => Self.Next = Period and State = Decimal;
+
+   -- Indicates if an exponent is expected.  Munches the pound sign
+   -- regardless of result.
+   function No_Exponent return Boolean
+      with Pre => State in Based | Based_Real
+                  and Self.Next = Pound;
+   function No_Exponent return Boolean is
+   begin
+      Append_Next; -- Munch the pound sign
+      return (Self.Next not in E);
+   end No_Exponent;
+
+   -- Error messages
+   Invalid_Character : constant String := "Invalid character for numeric literal";
+   Missing_Based     : constant String := "A numeral digit expected after " & Pound;
+   Missing_Real      : constant String := "A numeral digit expected after " & Period;
+   Missing_Exponent  : constant String := "A numeral digit expected for exponent";
+   Incomplete_Number : constant String := "Unexpected end to numeric literal";
+   Incomplete_Based  : constant String := "Based literal must end with a " & Pound;
+   Digit_Too_High    : constant String := "Digit too high for supplied base";
+   No_Real_Base      : constant String := "Based literal cannot have a real base";
+   Base_10_Exponent  : constant String := "Exponent must be expressed in base 10";
+   Base_10_Numeral   : constant String := "Decimal literal must be expressed in base 10";
+   Not_Separated     : constant String := "Literals must be separated by whitespace or a delimiter";
+   
+   -- Ensures the next character is a valid numeral to scan
+   procedure Validate_Has_Numeral with Pre => State not in Decimal;
+   procedure Validate_Has_Numeral is
+   begin
+      if not Is_Numeral(Self.Next) then
+         if Self.Not_Running or else Is_Whitespace(Self.Next) then
+            Self.Error(Incomplete_Number);
+         else
+            case Self.Next is
+               when Hex_Digit =>
+                  case State is
+                     when Decimal | Decimal_Real => Self.Error(Base_10_Numeral);
+                     when Based   | Based_Real   => Self.Error(Digit_Too_High);
+                     when Exponent               => Self.Error(Base_10_Exponent);
                   end case;
-                  if Base not in 2 .. 16 then
-                     Self.Error("Base value out of range 2 .. 16", Line, First);
-                  end if;
-               elsif Pound_Count = 2 then
-                  Self.Error("Too many '#'. Exponent expected");
-               end if;
-               Pound_Count := Pound_Count + 1;
-            when Period =>
-               -- Two periods in a row means a range was found
-               if Self.Last_In = Period then
-                  -- Make sure we are not in the middle of parsing
-                  -- the significand for a based literal.
-                  if Pound_Count = 1 then
-                     Self.Error("Range cannot be in numeric literal");
-                  end if;
-                  Range_Found := True;
+               when others =>
+                  case State is
+                     when Decimal      => Self.Error(Invalid_Character);
+                     when Decimal_Real => Self.Error(Missing_Real);
+                     when Based        => Self.Error(Missing_Based);
+                     when Based_Real   => Self.Error(Missing_Real);
+                     when Exponent     => Self.Error(Missing_Exponent);
+                  end case;
+            end case;
+         end if;
+      end if;
+   end Validate_Has_Numeral;
 
-                  -- Trim of the previous period later
-                  return Result(1..Natural(Index)-1);  
-
-               -- Period after a #, so assume literal is finished
-               elsif Self.Last_In = Pound then
-                  -- Make sure we are not in the middle of parsing
-                  -- the significand for a based literal.
-                  if Pound_Count = 1 then
-                     Self.Error("'.' cannot appear immediately after '#' in digit");
-                  end if;
-                  return Result(1..Natural(Index)-1);
-               end if;
-
-               -- Just a single period, move on to other parsing
-               Check_Preceded_By_Digit;
-
-               -- If exponent is already found, assume literal is finished
-               if Exponent_Found then
-                  if Self.Last_In in Exponent_Lower | Exponent_Upper then
-                     Self.Error("Period cannot be in exponent of digit");
-                  else
-                     return Result(1..Natural(Index)-1);
-                  end if;
-               elsif Decimal_Found then
-                  if Pound_Count = 1 then
-                     Self.Error("Too many periods in digit");
-                  else
-                     return Result(1..Natural(Index)-1);
-                  end if;
-               end if;
-               Decimal_Found := True;
-            when Plus =>
-               if Literal_Finished then
-                  return Result(1..Natural(Index)-1);
-               elsif not Exponent_Found then
-                  Self.Error("'+' can only appear in exponent. 'E' expected");
-               elsif Self.Last_In not in Exponent_Lower | Exponent_Upper then
-                  Self.Error("'+' must follow an 'E' or 'e' in digit");
-               end if;
-            when Minus =>
-               if Literal_Finished then
-                  return Result(1..Natural(Index)-1);
-               elsif not Exponent_Found then
-                  Self.Error("'-' can only appear in exponent. 'E' expected");
-               elsif not Decimal_Found then
-                  Self.Error("Integer exponents cannot be negative");
-               elsif Self.Last_In not in Exponent_Lower | Exponent_Upper then
-                  Self.Error("- must follow an 'E' or 'e' in digit");
-               end if;
+   -- Ensures the literal isn't concatenated to an identifier
+   -- or another numeric literal, which would be an error
+   procedure Validate_End_Of_Literal is
+   begin
+      if Is_Identifier(Self.Next) then
+         case Self.Next is
+            when Numeral_Digit =>
+               Self.Error(Not_Separated);
+            when Extended_Digit =>
+               case State is
+                  when Decimal | Decimal_Real => Self.Error(Base_10_Numeral);
+                  when Exponent               => Self.Error(Base_10_Exponent);
+                  when others                 => Self.Error(Invalid_Character);
+               end case;
             when others => 
-               if Is_Alpha(Self.Next_In) then
-                  Self.Error("End of numeric literal invalid");
-               elsif not Literal_Finished then
-                  if Pound_Count = 1 then
-                     Self.Error("End of numeric literal invalid.  '#' expected");
-                  else
-                     Self.Error("End of numeric literal invalid");
-                  end if;
-               end if;
-               return Result(1..Natural(Index)-1);
-               
+               Self.Error(Invalid_Character);
          end case;
-
-         Result(Index)  := Self.Next_In;
-         Self.Get_Character(Stream);
-      end loop;
-
-      return Result & Get_Numeric;
-   end Get_Numeric;
-
-   Result : constant String := Get_Numeric;
+      end if;
+   end Validate_End_Of_Literal;
 
 begin
-   if Range_Found then
-      Self.Tokens.Append(Token'
-         (Kind  => 
-            (if Decimal_Found then 
-               Tokens.Real_Literal 
-            else 
-               Tokens.Integer_Literal),
-          Value => Strings.New_String(Result(Result'First .. Result'Last - 1)),
-          Line  => Line,
-          First => First,
-          Last  => Self.Column - 2));
-      Self.Tokens.Append(Token'
-         (Kind  => Tokens.Operator_Range,
-          Value => Strings.New_String(".."),
-          Line  => Line,
-          First => Self.Column - 1,
-          Last  => Self.Column));
-      Self.Get_Character(Stream);  -- Munch 2nd period
+
+   -- Decimal   Based     Real                Exponent
+   -- ------------------------------------------------
+   -- numeral
+   -- numeral                       E|e [+|-] numeral
+   -- numeral           . numeral
+   -- numeral           . numeral   E|e [+|-] numeral
+   -- numeral # numeral           #
+   -- numeral # numeral           # E|e [+|-] numeral
+   -- numeral # numeral . numeral #
+   -- numeral # numeral . numeral # E|e [+|-] numeral
+   loop
+      -- Get full numeral, including underlines, but not separators
+      Scan_Numeral(Self, Stream, Buffer);
+
+      -- Scan any numeral separators
+      case State is
+         when Decimal =>
+            case Self.Next is
+               when Period   => exit when Is_Range; Set_State_To(Decimal_Real);
+               when Pound    =>                     Set_State_To(Based);
+               when E        =>                     Set_State_To(Exponent);
+               when others   => exit;
+            end case;
+         when Decimal_Real =>
+            case Self.Next is
+               when E      => Set_State_To(Exponent);
+               when Pound  => Self.Error(No_Real_Base);
+               when others => exit;
+            end case;
+         when Based =>
+            case Self.Next is
+               when Period    =>                        Set_State_To(Based_Real);
+               when Pound     => exit when No_Exponent; Set_State_To(Exponent);
+               when Hex_Digit =>                        Self.Error(Digit_Too_High);
+               when others    =>                        Self.Error(Incomplete_Based);
+            end case;
+         when Based_Real =>
+            case Self.Next is
+               when Pound     => exit when No_Exponent; Set_State_To(Exponent);
+               when Hex_Digit =>                        Self.Error(Digit_Too_High);
+               when others    =>                        Self.Error(Incomplete_Based);
+            end case;
+         when Exponent => 
+            exit;
+      end case;
+
+      -- Ensure there is a numeral to scan before
+      -- continuing the loop
+      Validate_Has_Numeral;
+
+   end loop;
+
+   -- Ensure the end of the literal is valid
+   Validate_End_Of_Literal;
+   if Is_Real then
+      return Self.Make(Tokens.Real_Literal, Buffer.Copy, First);
    else
-      Self.Tokens.Append(Token'
-      (Kind  => 
-         (if Decimal_Found then 
-            Tokens.Real_Literal 
-          else 
-            Tokens.Integer_Literal),
-       Value => Strings.New_String(Result),
-       Line  => Line,
-       First => First,
-       Last  => Self.Column - 1));
+      return Self.Make(Tokens.Integer_Literal, Buffer.Copy, First);
    end if;
    
 end Get_Numeric_Literal;
